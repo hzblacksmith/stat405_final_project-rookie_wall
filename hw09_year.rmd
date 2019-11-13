@@ -1,0 +1,42 @@
+---
+title: "Homework 9"
+author: "David Dai (wd16)"
+date: "11/9/2019"
+output: pdf_document
+---
+
+```{r}
+library(XML)
+library(RCurl)
+library(data.table)
+
+data <- read.csv('Downloads/AllRookieDataWithURL.csv')
+f2 <- function(x) { u <- unique(x) ; data.frame(uniqueValue=u, firstIndex=match(u, x))}
+# select first index of unique elements (matching the draft year)
+index = f2(data$br_url)$firstIndex
+urls <- unique(data$br_url)
+
+nurls <- length(urls)
+intl_df <- data.frame(matrix(ncol = 3, nrow = nurls))
+
+for (i in 1:nurls) {
+  u <- paste0("https://www.basketball-reference.com/international/players/", urls[i],".html")
+  if (url.exists(url = u)) {
+    download.file(u, destfile = "international.html")
+    doc <- htmlParse("international.html")
+    g <- getNodeSet(doc, "//*[@id='totals-league-reg']/tfoot/tr/td[4]")
+    mp <- getNodeSet(doc, "//*[@id='totals-league-reg']/tfoot/tr/td[5]")
+    yr <- getNodeSet(doc, "//*[@id='per_game-league-reg']/tbody/tr/th/a")
+    year = as.numeric(substr(as.character(xmlValue(yr[[1]])), 1, 4))
+    draft_year = data[index[i], ]$season_id
+    # cat(year, draft_year)
+    # year maybe NA
+    if (!is.na(year) & draft_year > year) {
+      (intl_df[i, ] <- list(urls[i], as.numeric(xmlValue(g[[1]])), as.numeric(xmlValue(mp[[1]]))))
+    }
+    # (minutes[i] <- as.numeric(xmlValue(mp[[1]])))
+    free(doc)
+  }
+}
+```
+

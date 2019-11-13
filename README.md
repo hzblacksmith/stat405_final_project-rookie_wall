@@ -1,2 +1,1 @@
-# stat405_final_project
-Rookie Wall
+# STAT 405 Final Project: Rookie Wall

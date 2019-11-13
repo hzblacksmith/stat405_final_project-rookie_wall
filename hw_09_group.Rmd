@@ -28,6 +28,7 @@ cbb_df <- data.frame(matrix(ncol = 3, nrow = nurls))
 ```
 
 ```{r, echo=TRUE}
+# Scrape international experiences
 
 for (i in 1:4) {
   # get the appopriate url address
@@ -46,6 +47,7 @@ for (i in 1:4) {
 }
 
 ```
+
 ```{r, echo=TRUE}
 # Scrape college careers
 
@@ -72,6 +74,7 @@ for (i in 1:5) {
   }
 }
 ```
+
 ```{r, echo=TRUE}
 cbb_df
 intl_df

@@ -25,7 +25,7 @@ all_urls <- as.vector(unique(data$br_url))
 # get the length of urls
 nurls <- length(all_urls)
 # create a dataframe for players with NCAA experience
-intl_df <- data.frame(matrix(ncol = 3, nrow = nurls))
+cbb_df <- data.frame(matrix(ncol = 3, nrow = nurls))
 ```
 
 ```{r, echo=TRUE}
@@ -49,8 +49,12 @@ for (i in 1:nurls) {
       )
     free(doc)
   }
+  
 }
+names(cbb_df)=c('nameurl','col_games','col_minutes')
 ```
+
+An example link of a page is here, for James Harden: https://www.sports-reference.com/cbb/players/james-harden-1.html
 
 ```{r, echo=TRUE}
 # We have 1180 rows of data
@@ -85,3 +89,6 @@ View(mydf)
 dbDisconnect(dcon)
 ```
 
+Using URLs like https://www.sports-reference.com/cbb/players/james-harden-1.html, we pulled the number of games played, and minutes played, by every player in our dataset.  Our dataset consists of all rookies (first year players) from the 2003-04 season through the 2018-19 season, thus we have 16 seasons of approximately 60-70 rookies through which we loop and pull their number of games and minutes in college.  The point of this is that our project is going to be analyzing the "readiness" of players for the NBA based on college and international experience.  We'll be extracting similar info for international players later.
+
+This data is then added to our SQL database to identify players' stats, but also their number of games and minutes in college to run statistical tests and compare college and international experience with future NBA experience.

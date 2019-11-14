@@ -5,7 +5,9 @@ date: "11/13/2019"
 output: pdf_document
 ---
 
-The url we scrape here is the College Basketball page of Sports Reference. An example URL is https://sports-reference.com/cbb/players/carmelo-anthony-1.html.
+We are scraping from the College Basketball page of Sports Reference. 
+One example url is https://sports-reference.com/cbb/players/carmelo-anthony-1.html
+We are interested in how many games they played and the total minutes to measure the correlation between college experience and rookie year performance.
 ```{r, echo=TRUE}
 library(XML)
 library(RCurl)
@@ -51,8 +53,8 @@ for (i in 1:nurls) {
 ```
 
 ```{r, echo=TRUE}
-cbb_df
-
+# We have 1180 rows of data
+nrow(cbb_df)
 ```
 
 

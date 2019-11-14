@@ -87,8 +87,13 @@ View(mydf)
 
 ```{r, echo=TRUE}
 dbDisconnect(dcon)
+cbb_data=read.csv('GroupedRookieDataWithCBB.csv')
 ```
 
 Using URLs like https://www.sports-reference.com/cbb/players/james-harden-1.html, we pulled the number of games played, and minutes played, by every player in our dataset.  Our dataset consists of all rookies (first year players) from the 2003-04 season through the 2018-19 season, thus we have 16 seasons of approximately 60-70 rookies through which we loop and pull their number of games and minutes in college.  The point of this is that our project is going to be analyzing the "readiness" of players for the NBA based on college and international experience.  We'll be extracting similar info for international players later.
 
-This data is then added to our SQL database to identify players' stats, but also their number of games and minutes in college to run statistical tests and compare college and international experience with future NBA experience.
+This data is then added to our dataframe cbb_data to identify players' stats, but also their number of games and minutes in college to run statistical tests and compare college and international experience with future NBA experience.  Here is an example of a statistical test of correlation, of points per 36 minutes vs cbb_games played.
+```{r}
+plot(cbb_data$cbb_games,cbb_data$Points)
+```
+What this shows is a clear group of four different sets of players, those who played only one college season through those who played four seasons.  Traditionally players who are drafted after only one year of college basketball are the best of the best, and therefore it makes sense that a lot of the players with the most points played only one or two seasons in college (the highest values on the graph appear more towards the left, indicating more points scored. 

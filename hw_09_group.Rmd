@@ -55,6 +55,33 @@ for (i in 1:nurls) {
 ```{r, echo=TRUE}
 # We have 1180 rows of data
 nrow(cbb_df)
+head(cbb_df)
 ```
 
+```{r, echo=TRUE}
+library(RSQLite)
+dcon <- dbConnect(SQLite(), dbname = "stat405_final_project.db")
+```
+
+```{r, echo=TRUE}
+# We have already merged cbb_df with main database, called AllRookieDataWithCBB, through DB Browser
+dbListTables(dcon)
+
+# We show first 1000 rows here
+# Each row represents a game played by a rookie, so if a rookie played 80 games, his
+# college stats will show up 80 times, but we decide to sacrifice redundancy for 
+# future simplicity on manipulations
+res <- dbSendQuery(conn = dcon, "
+SELECT *
+FROM AllRookieDataWithCBB
+LIMIT 1000;
+")
+mydf <- dbFetch(res, -1)
+dbClearResult(res)
+View(mydf)
+```
+
+```{r, echo=TRUE}
+dbDisconnect(dcon)
+```
 

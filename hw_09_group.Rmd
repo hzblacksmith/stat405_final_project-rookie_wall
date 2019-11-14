@@ -29,6 +29,36 @@ cbb_df <- data.frame(matrix(ncol = 3, nrow = nurls))
 ```
 
 ```{r, echo=TRUE}
+# Find all urls that ends with 2
+all_urls2 <- str_replace_all(all_urls, '1', '2')
+nurls2 <- length(all_urls2)
+cbb_df2 <- data.frame(matrix(ncol = 3, nrow = nurls2))
+
+for (i in 1:nurls2) {
+  # get the appopriate url address
+  u <- paste0("https://sports-reference.com/cbb/players/",
+              all_urls2[i],".html")
+  if (url.exists(url = u)) {
+    download.file(u, destfile = paste0("cbb.html"))
+    doc <- htmlParse("cbb.html")
+    g <- getNodeSet(doc, "//*[@id='players_per_game']/tfoot/tr/td[3]")
+    mp <- getNodeSet(doc, "//*[@id='players_per_game']/tfoot/tr/td[5]")
+    (cbb_df2[i, ] <- c(all_urls2[i], as.numeric(xmlValue(g[[1]])),
+                     as.integer(as.numeric(xmlValue(mp[[1]])
+                                           ) * 
+                                  as.numeric(xmlValue(g[[1]])
+                                             )
+                                  )
+                      )
+      )
+    free(doc)
+  }
+  
+}
+names(cbb_df2)=c('nameurl','col_games','col_minutes')
+```
+
+```{r, echo=TRUE}
 # Scrape college careers
 for (i in 1:nurls) {
   # get the appopriate url address
@@ -55,6 +85,12 @@ names(cbb_df)=c('nameurl','col_games','col_minutes')
 ```
 
 An example link of a page is here, for James Harden: https://www.sports-reference.com/cbb/players/james-harden-1.html
+
+```{r, echo=TRUE}
+apply(cbb_df2, 2, function(x) length(which(!is.na(x))))
+# 186 urls that end up with 2
+```
+
 
 ```{r, echo=TRUE}
 # We have 1180 rows of data
@@ -94,6 +130,6 @@ Using URLs like https://www.sports-reference.com/cbb/players/james-harden-1.html
 
 This data is then added to our dataframe cbb_data to identify players' stats, but also their number of games and minutes in college to run statistical tests and compare college and international experience with future NBA experience.  Here is an example of a statistical test of correlation, of points per 36 minutes vs cbb_games played.
 ```{r}
-plot(cbb_data$cbb_games,cbb_data$Points)
+plot(cbb_data$cbb_games,cbb_data$Points/cbb_data$minutes * 36.0)
 ```
 What this shows is a clear group of four different sets of players, those who played only one college season through those who played four seasons.  Traditionally players who are drafted after only one year of college basketball are the best of the best, and therefore it makes sense that a lot of the players with the most points played only one or two seasons in college (the highest values on the graph appear more towards the left, indicating more points scored. 

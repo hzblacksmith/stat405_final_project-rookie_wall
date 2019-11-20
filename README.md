@@ -1,4 +1,10 @@
 # STAT 405 Final Project: Rookie Wall
+
+### College stats
+*TODO*:
+1. Find if there is any urls that end with 3 (4)
+2. Find out which url is the right one manually
+
 ### intl_scrape.rmd
 Used to scrape internaional experience.
 

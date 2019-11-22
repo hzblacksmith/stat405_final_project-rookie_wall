@@ -66,33 +66,52 @@ library(ggpubr)
 library(grid)
 library(gridBase)
 data=read.csv('PlayersGroupedByMonthAndBin.csv')
-cols <- c("0"="black",'1'='greenyellow','2'='forestgreen','3'='dodgerblue','4'='darkorchid1','5'='yellow','6'='orange','7'='darksalmon','8'='firebrick3')
+cols <- c("0"="black",'1'='greenyellow','2'='forestgreen','3'='dodgerblue',
+          '4'='darkorchid1','5'='yellow','6'='orange','7'='darksalmon','8'='firebrick3')
 data$Month<-factor(data$Month,levels=c(10,11,12,1,2,3,4,5,6))
 Game_Score36=data$Game_Score/data$Minutes*36
 data$Game_Score36=Game_Score36
 
 Game_Score_Plot=ggplot(data, aes(x = Month, y = Game_Score, group = Bin, color = 'Bin')) + 
-  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_point(aes(color = factor(Bin))) + 
+  scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms',
+                                             'Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins',
+                                             'Intl 670-1221 Mins','Intl 1222-3328 Mins',
+                                             'Intl 3329+ Mins')) +
   geom_line(aes(color = factor(Bin)))
 Minutes_Plot=ggplot(data, aes(x = Month, y = Minutes, group = Bin, color = 'Bin')) + 
-  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_point(aes(color = factor(Bin))) + 
+  scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms',
+                                             'Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins',
+                                             'Intl 670-1221 Mins','Intl 1222-3328 Mins',
+                                             'Intl 3329+ Mins')) +
   geom_line(aes(color = factor(Bin)))
 Pts36_Plot=ggplot(data, aes(x = Month, y = Pts36, group = Bin, color = 'Bin')) + 
-  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_point(aes(color = factor(Bin))) + 
+  scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms',
+                                             'Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','
+                                             Intl 670-1221 Mins','Intl 1222-3328 Mins',
+                                             'Intl 3329+ Mins')) +
   geom_line(aes(color = factor(Bin)))
 Game_Score_36_Plot=ggplot(data, aes(x = Month, y = Game_Score36, group = Bin, color = 'Bin')) + 
-  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_point(aes(color = factor(Bin))) + 
+  scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms',
+                                             'Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins',
+                                             'Intl 670-1221 Mins','Intl 1222-3328 Mins',
+                                             'Intl 3329+ Mins')) +
   geom_line(aes(color = factor(Bin)))
-plot=ggarrange(Game_Score_Plot,Minutes_Plot,Pts36_Plot,Game_Score_36_Plot,ncol=2,nrow=2,common.legend=TRUE)
-annotate_figure(plot,top=text_grob('Game Score, Minutes, Pts Per 36 Mins, and Game Score Per 36 Mins Plots by Month'))
-vp1=viewport(x=0,y=0,width=0.5,height=0.5,just=c('left','bottom'))
-vp2=viewport(x=0,y=0.5,width=0.5,height=0.5,just=c('left','bottom'))
-vp3=viewport(x=0.5,y=0,width=0.5,height=0.5,just=c('left','bottom'))
-vp4=viewport(x=0,y=0.5,width=0.5,height=0.5,just=c('left','bottom'))
-print(Game_Score_Plot,vp=vp1)
-print(Minutes_Plot,vp=vp2)
-print(Pts36_Plot,vp=vp3)
-print(Game_Score_36_Plot,vp=vp4)
+plot=ggarrange(Game_Score_Plot,Minutes_Plot,Pts36_Plot,Game_Score_36_Plot,
+               ncol=2,nrow=2,common.legend=TRUE)
+annotate_figure(plot,top=text_grob('Game Score, Minutes, Pts Per 36 Mins, 
+                                   and Game Score Per 36 Mins Plots by Month'))
+#vp1=viewport(x=0,y=0,width=0.5,height=0.5,just=c('left','bottom'))
+#vp2=viewport(x=0,y=0.5,width=0.5,height=0.5,just=c('left','bottom'))
+#vp3=viewport(x=0.5,y=0,width=0.5,height=0.5,just=c('left','bottom'))
+#vp4=viewport(x=0,y=0.5,width=0.5,height=0.5,just=c('left','bottom'))
+#print(Game_Score_Plot,vp=vp1)
+#print(Minutes_Plot,vp=vp2)
+#print(Pts36_Plot,vp=vp3)
+#print(Game_Score_36_Plot,vp=vp4)
 ```
 
 ```{r}
@@ -111,7 +130,11 @@ plot_func <- function(plot_name) {
     return()
   }
   ggplot(data, aes(x = Month, y = y, group = Bin, color = 'Bin')) + 
-  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_point(aes(color = factor(Bin))) + 
+    scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms',
+                                               'Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins',
+                                               'Intl 670-1221 Mins','Intl 1222-3328 Mins',
+                                               'Intl 3329+ Mins')) +
   geom_line(aes(color = factor(Bin))) + 
   labs(y = plot_name)
 }

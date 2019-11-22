@@ -96,6 +96,29 @@ print(Game_Score_36_Plot,vp=vp4)
 ```
 
 ```{r}
+# Function
+plot_func <- function(plot_name) {
+  if (plot_name == "Game_Score") {
+    y = data$Game_Score
+  } else if (plot_name == "Minutes") {
+    y = data$Minutes
+  } else if (plot_name == "Pts36") {
+    y = data$Pts36
+  } else if (plot_name == "Game_Score36") {
+    y = data$Game_Score36
+  } else {
+    print("Plot name not found")
+    return()
+  }
+  ggplot(data, aes(x = Month, y = y, group = Bin, color = 'Bin')) + 
+  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_line(aes(color = factor(Bin))) + 
+  labs(y = plot_name)
+}
+plot_func("Game_Score36")
+```
+
+```{r}
 # Multiple plot function
 #
 # ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)

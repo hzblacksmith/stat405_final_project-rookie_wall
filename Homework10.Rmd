@@ -54,7 +54,7 @@ plot(data$Month,data$Pts36,col=data$MinBin)
 plot(data$Month,data$Ast36,col=data$MinBin)
 plot(data$Month,data$TO36,col=data$MinBin)
 
-
+data$month<-factor(data$Month,levels=c(10,11,12,1,2,3,4,5,6))
 
 ```
 
@@ -62,11 +62,73 @@ plot(data$Month,data$TO36,col=data$MinBin)
 Here is the good stuff!
 ```{r}
 library(ggplot2)
+library(ggpubr)
 data=read.csv('PlayersGroupedByMonthAndBin.csv')
 cols <- c("0"="black",'1'='greenyellow','2'='forestgreen','3'='dodgerblue','4'='darkorchid1','5'='yellow','6'='orange','7'='darksalmon','8'='firebrick3')
-ggplot(data, aes(x = Month, y = Game_Score, group = Bin, color = Bin)) + 
-  geom_point(aes(color = factor(Bin)))+ scale_colour_manual(values = cols) +
-  geom_line(col = 'gray')+
-  scale_x_continuous(breaks = c(10,11,12,1,2,3,4,5,6))
+data$Month<-factor(data$Month,levels=c(10,11,12,1,2,3,4,5,6))
+Game_Score36=data$Game_Score/data$Minutes*36
+data$Game_Score36=Game_Score36
+
+Game_Score_Plot=ggplot(data, aes(x = Month, y = Game_Score, group = Bin, color = 'Bin')) + 
+  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_line(aes(color = factor(Bin)))
+Minutes_Plot=ggplot(data, aes(x = Month, y = Minutes, group = Bin, color = 'Bin')) + 
+  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_line(aes(color = factor(Bin)))
+Pts36_Plot=ggplot(data, aes(x = Month, y = Pts36, group = Bin, color = 'Bin')) + 
+  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_line(aes(color = factor(Bin)))
+Game_Score_36_Plot=ggplot(data, aes(x = Month, y = Game_Score36, group = Bin, color = 'Bin')) + 
+  geom_point(aes(color = factor(Bin)))+ scale_color_manual(values = cols, labels=c('HS/Unknown Intl','Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms','Intl 1-669 Mins','Intl 670-1221 Mins','Intl 1222-3328 Mins','Intl 3329+ Mins')) +
+  geom_line(aes(color = factor(Bin)))
+plot=ggarrange(Game_Score_Plot,Minutes_Plot,Pts36_Plot,Game_Score_36_Plot,ncol=2,nrow=2,common.legend=TRUE)
+annotate_figure(plot,top=text_grob('Game Score, Minutes, Pts Per 36 Mins, and Game Score Per 36 Mins Plots by Month'))
+```
+```{r}
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
 ```
 

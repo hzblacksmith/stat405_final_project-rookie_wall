@@ -15,54 +15,56 @@ knitr::opts_chunk$set(echo = TRUE)
 #Ignore this all for now, it's just a bunch of operations
 
 
-data=read.csv('PlayersGroupedByMonth.csv')
-par(mfrow=c(2,2))
-plot(data$CollegeGames,data$Minutes)
-plot(data$CollegeGames,data$Pts36,ylim=c(0,30))
-plot(data$CollegeGames,data$Ast36)
-plot(data$CollegeGames,data$TO36)
-
-bin=rep(0,length(data$br_url))
-#for (i in 1:length(bin)){
-  if (data$College_Games[i] <= 35 && data$College_Games[i] >= 1) {
-  bin[i]=1
-  } else if (data$College_Games[i] >= 36 && data$College_Games[i] <= 70) {
-  bin[i]=2
-  } else if (data$College_Games[i] >= 71 && data$College_Games[i] <= 105) {
-  bin[i]=3
-  } else if (data$College_Games[i] >= 106 && data$College_Games[i] <= 152) {
-  bin[i]=4
-  } else if (data$Intl_Minutes[i] <= 669 && data$Intl_Minutes[i] >= 2) {
-  bin[i]=5
-  } else if (data$Intl_Minutes[i] >= 670 && data$Intl_Minutes[i] <= 1221) {
-  bin[i]=6
-  } else if (data$Intl_Minutes[i] >= 1222 && data$Intl_Minutes[i] <= 3328) {
-  bin[i]=7
-  } else if (data$Intl_Minutes[i] >= 3329 && data$Intl_Minutes[i] <= 13659) {
-  bin[i]=8
-}
-}
-data$bin=bin
-data$minsgroup<-NULL
-#write.csv(data,'PlayersGroupedByMonth2.csv')
-
-
-
-par(mfrow=c(2,2))
-plot(data$Month,data$Minutes,col=data$MinBin)
-plot(data$Month,data$Pts36,col=data$MinBin)
-plot(data$Month,data$Ast36,col=data$MinBin)
-plot(data$Month,data$TO36,col=data$MinBin)
-
-data$month<-factor(data$Month,levels=c(10,11,12,1,2,3,4,5,6))
+# data=read.csv('PlayersGroupedByMonth.csv')
+# par(mfrow=c(2,2))
+# plot(data$CollegeGames,data$Minutes)
+# plot(data$CollegeGames,data$Pts36,ylim=c(0,30))
+# plot(data$CollegeGames,data$Ast36)
+# plot(data$CollegeGames,data$TO36)
+# 
+# bin=rep(0,length(data$br_url))
+# #for (i in 1:length(bin)){
+#   if (data$College_Games[i] <= 35 && data$College_Games[i] >= 1) {
+#   bin[i]=1
+#   } else if (data$College_Games[i] >= 36 && data$College_Games[i] <= 70) {
+#   bin[i]=2
+#   } else if (data$College_Games[i] >= 71 && data$College_Games[i] <= 105) {
+#   bin[i]=3
+#   } else if (data$College_Games[i] >= 106 && data$College_Games[i] <= 152) {
+#   bin[i]=4
+#   } else if (data$Intl_Minutes[i] <= 669 && data$Intl_Minutes[i] >= 2) {
+#   bin[i]=5
+#   } else if (data$Intl_Minutes[i] >= 670 && data$Intl_Minutes[i] <= 1221) {
+#   bin[i]=6
+#   } else if (data$Intl_Minutes[i] >= 1222 && data$Intl_Minutes[i] <= 3328) {
+#   bin[i]=7
+#   } else if (data$Intl_Minutes[i] >= 3329 && data$Intl_Minutes[i] <= 13659) {
+#   bin[i]=8
+# }
+# }
+# data$bin=bin
+# data$minsgroup<-NULL
+# #write.csv(data,'PlayersGroupedByMonth2.csv')
+# 
+# 
+# 
+# par(mfrow=c(2,2))
+# plot(data$Month,data$Minutes,col=data$MinBin)
+# plot(data$Month,data$Pts36,col=data$MinBin)
+# plot(data$Month,data$Ast36,col=data$MinBin)
+# plot(data$Month,data$TO36,col=data$MinBin)
+# 
+# data$month<-factor(data$Month,levels=c(10,11,12,1,2,3,4,5,6))
 
 ```
 
 
 Here is the good stuff!
-```{r}
+```{r, warning=FALSE}
 library(ggplot2)
 library(ggpubr)
+library(grid)
+library(gridBase)
 data=read.csv('PlayersGroupedByMonthAndBin.csv')
 cols <- c("0"="black",'1'='greenyellow','2'='forestgreen','3'='dodgerblue','4'='darkorchid1','5'='yellow','6'='orange','7'='darksalmon','8'='firebrick3')
 data$Month<-factor(data$Month,levels=c(10,11,12,1,2,3,4,5,6))
@@ -83,7 +85,16 @@ Game_Score_36_Plot=ggplot(data, aes(x = Month, y = Game_Score36, group = Bin, co
   geom_line(aes(color = factor(Bin)))
 plot=ggarrange(Game_Score_Plot,Minutes_Plot,Pts36_Plot,Game_Score_36_Plot,ncol=2,nrow=2,common.legend=TRUE)
 annotate_figure(plot,top=text_grob('Game Score, Minutes, Pts Per 36 Mins, and Game Score Per 36 Mins Plots by Month'))
+vp1=viewport(x=0,y=0,width=0.5,height=0.5,just=c('left','bottom'))
+vp2=viewport(x=0,y=0.5,width=0.5,height=0.5,just=c('left','bottom'))
+vp3=viewport(x=0.5,y=0,width=0.5,height=0.5,just=c('left','bottom'))
+vp4=viewport(x=0,y=0.5,width=0.5,height=0.5,just=c('left','bottom'))
+print(Game_Score_Plot,vp=vp1)
+print(Minutes_Plot,vp=vp2)
+print(Pts36_Plot,vp=vp3)
+print(Game_Score_36_Plot,vp=vp4)
 ```
+
 ```{r}
 # Multiple plot function
 #

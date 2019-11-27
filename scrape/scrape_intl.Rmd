@@ -1,0 +1,48 @@
+---
+title: "international_scrape"
+author: "Group 8"
+date: "11/13/2019"
+output: pdf_document
+---
+
+```{r, echo=TRUE}
+library(XML)
+library(RCurl)
+library(stringr)
+
+```
+
+```{r, echo=TRUE}
+# read all rookie stats in
+data <- read.csv('AllRookieDataWithURL.csv')
+```
+
+```{r, echo=TRUE}
+# get urls from br_url column
+all_urls <- as.vector(unique(data$br_url))
+# get the length of urls
+nurls <- length(all_urls)
+# create a dataframe for players with international experience
+intl_df <- data.frame(matrix(ncol = 3, nrow = nurls))
+```
+
+```{r, echo=TRUE}
+# Scrape international experiences
+
+for (i in 1:4) {
+  # get the appopriate url address
+  u <- paste0("https://www.basketball-reference.com/international/players/",
+            all_urls[i],".html")
+  if (url.exists(url = u)) {
+    download.file(u, destfile = paste0("group_project/international.html"))
+    doc <- htmlParse("group_project/international.html")
+    g <- getNodeSet(doc, "//*[@id='totals-all-reg']/tfoot/tr/td[4]")
+    mp <- getNodeSet(doc, "//*[@id='totals-all-reg']/tfoot/tr/td[5]")
+    (intl_df[i, ] <- c(all_urls[i], as.numeric(xmlValue(g[[1]])),
+                       as.numeric(xmlValue(mp[[1]]))))
+    # (minutes[i] <- as.numeric(xmlValue(mp[[1]])))
+    free(doc)
+  }
+}
+
+```

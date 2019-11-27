@@ -103,7 +103,7 @@ library(RSQLite)
 dcon <- dbConnect(SQLite(), dbname = "stat405_final_project.db")
 ```
 
-```{r, echo=TRUE}
+```{r, echo=TRUE, message=FALSE}
 # We have already merged cbb_df with main database, called AllRookieDataWithCBB, through DB Browser
 dbListTables(dcon)
 

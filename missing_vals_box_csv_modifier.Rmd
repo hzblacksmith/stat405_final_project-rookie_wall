@@ -1,0 +1,81 @@
+---
+title: "Missing Value Box Score"
+author: "Group 8"
+date: "11/26/2019"
+output: pdf_document
+---
+
+
+```{r, echo=TRUE}
+library(stringr)
+library(dplyr)
+library(XML)
+library(RCurl)
+library(stringr)
+
+data = read.csv("BoxScoreMissingVals.csv")
+```
+```{r, echo=TRUE}
+# The format of player url is firstname-lastname-1, so we create a new column called
+# br_url which consists of lowercase name and replace whitespace with "-"
+
+# after paste it becomes "carmelo - anthony - 1", so in order to eliminate space we
+# use str_replace_all to replace with ""
+
+# then we added a new column called "br_url" for scraping usage
+data$br_url <- str_replace_all(
+  paste(
+    str_to_lower(data$First_Name), "-", 
+    str_to_lower(data$Last_Name), "-", "1"), 
+  " ", "")
+
+head(data$br_url)
+```
+
+```{r, echo=TRUE}
+# get urls from br_url column
+all_urls <- as.vector(unique(data$br_url))
+# get the length of urls
+nurls <- length(all_urls)
+# create a dataframe for players with NCAA experience
+cbb_df <- data.frame(matrix(ncol = 3, nrow = nurls))
+```
+
+```{r, echo=TRUE}
+# Scrape college careers
+for (i in 1:nurls) {
+  # get the appopriate url address
+  u <- paste0("https://sports-reference.com/cbb/players/",
+              all_urls[i],".html")
+  if (url.exists(url = u)) {
+    download.file(u, destfile = paste0("cbb.html"))
+    doc <- htmlParse("cbb.html")
+    g <- getNodeSet(doc, "//*[@id='players_per_game']/tfoot/tr/td[3]")
+    mp <- getNodeSet(doc, "//*[@id='players_per_game']/tfoot/tr/td[5]")
+    (cbb_df[i, ] <- c(all_urls[i], as.numeric(xmlValue(g[[1]])),
+                     as.integer(as.numeric(xmlValue(mp[[1]])
+                                           ) * 
+                                  as.numeric(xmlValue(g[[1]])
+                                             )
+                                  )
+                      )
+      )
+    free(doc)
+  }
+  
+}
+names(cbb_df)=c('nameurl','col_games','col_minutes')
+```
+
+```{r, echo=TRUE}
+apply(cbb_df, 2, function(x) length(which(!is.na(x))))
+# 186 urls that end up with 2
+```
+
+
+```{r, echo=TRUE}
+# We have 1180 rows of data
+nrow(cbb_df)
+head(cbb_df)
+write.csv(cbb_df, "missing_ncaa.csv")
+```

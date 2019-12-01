@@ -1,0 +1,30 @@
+---
+title: "Add Month Bin and CBB Group"
+author: "Group 8"
+date: "11/30/2019"
+output: pdf_document
+---
+
+```{r, echo=TRUE}
+library(stringr)
+library(dplyr)
+library(XML)
+library(RCurl)
+library(stringr)
+```
+
+```{r, echo=TRUE}
+rookie <- read.csv('stat405_final_project/data/AllRookieData.csv')
+# str(rookie)
+# head(rookie$Date_EST)
+rookie$cbb_group[as.numeric(rookie$cbb_games) <= 35] = 1
+rookie$cbb_group[as.numeric(rookie$cbb_games) > 35 & as.numeric(rookie$cbb_games) <= 70] = 2
+rookie$cbb_group[as.numeric(rookie$cbb_games) > 70 & as.numeric(rookie$cbb_games) <= 105] = 3
+rookie$cbb_group[as.numeric(rookie$cbb_games) > 105] = 4
+
+rookie$Month = as.numeric(substr(rookie$Date_EST, 1, 2))
+rookie$MonthBin[as.numeric(substr(rookie$Date_EST, 4, 5)) <= 10] = 1
+rookie$MonthBin[as.numeric(substr(rookie$Date_EST, 4, 5)) <= 20 & as.numeric(substr(rookie$Date_EST, 4, 5)) > 10] = 2
+rookie$MonthBin[as.numeric(substr(rookie$Date_EST, 4, 5)) > 20] = 3
+write.csv(rookie, 'AllRookieDataGrouped.csv', row.names = FALSE)
+```

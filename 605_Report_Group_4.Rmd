@@ -1,0 +1,1267 @@
+---
+title: "Suicide and Mortality"
+author: "Alex Aguilar, Andersen Chang, Elisabeth Dowling, Sarah Robinson"
+date: "November 2nd, 2017"
+output: pdf_document
+fontsize: 10pt
+geometry: margin=1in
+---
+
+```{r include = FALSE}
+
+### CHANGE WORKING DIRECTORY ON 358
+library(knitr) 
+library(tidyverse)
+library(forcats)
+library(gridExtra)
+library(RSQLite)
+library(icd)
+library(jsonlite)
+library(gtable)
+library(grid)
+require(latex2exp)
+library(gridBase)
+library(nnet)
+
+opts_chunk$set(echo = FALSE, 
+               cache = FALSE, 
+               autodep = TRUE,
+               cache.comments = FALSE,
+               message = FALSE, 
+               warning = FALSE,
+               comment = NA,
+               tidy.opts=list(width.cutoff=65))
+
+
+# cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+#                "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+
+theme1 <- theme_bw() +
+  theme(axis.text = element_text(size = 8, colour = "#6b3447"),
+        axis.title = element_text(size = 10, colour = "#2f2f63"),
+        legend.title = element_text(size = 8, colour = "#2f2f63"),
+        legend.text = element_text(size = 8, colour = "#6b3447"), 
+        title = element_text(size = 12, colour = "#2f2f63"), 
+        axis.ticks = element_line(colour = "#6b3447"),
+        plot.caption = element_text(size = 8, colour = "#2f2f63"),
+        plot.subtitle = element_text(size = 10, colour = "#2f2f63"))
+```
+
+```{r eval = FALSE}
+dcon <- dbConnect(SQLite(), dbname = "deaths.sqlite")
+code_names <- fromJSON("./data/2005_codes.json")
+
+dbSendQuery(dcon, "ALTER TABLE all_deaths 
+            ALTER COLUMN hispanic_origin numeric;")
+
+# # Age recode 12 stop
+# for(ii in valid_cols){
+#   for(jj in 1:length(code_names[[ii]])) {
+#     query <- paste0("UPDATE all_deaths SET ", names(code_names)[ii]," = '", 
+#                     code_names[[ii]][[jj]], "' WHERE ", names(code_names)[ii], " = '", 
+#                     names(code_names[[ii]])[jj], "'")
+#     print(query)
+#     dbSendQuery(dcon, query)
+#   }
+# }
+
+demo_cols <- c(1, 5, 6, 10, 15, 13, 14)
+
+for (kk in demo_cols) {
+  counts <- numeric(length(code_names[[kk]]))
+  for (ll in 1:length(code_names[[kk]])) {
+    query <- paste0("SELECT count(*) FROM all_deaths WHERE ", names(code_names)[kk], 
+                    " = '", names(code_names[[kk]])[ll], "'")
+    print(query)
+    res <- dbSendQuery(dcon, query)
+    counts[ll] <- unlist(dbFetch(res, -1))
+    dbClearResult(res)
+  }
+  eval(parse(text = paste0(names(code_names)[kk], "_df <- data.frame(Level = unlist(code_names[[kk]]),
+                           Count = counts)")))
+}
+
+
+
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths;")
+total_deaths <- dbFetch(res, -1)
+dbClearResult(res)
+
+# Race
+race_counts <- numeric(5)
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE hispanic_origin >= '200';")
+hisp_race <- dbFetch(res, -1)
+dbClearResult(res)
+race_counts[1] <- unlist(hisp_race)
+
+for (ll in 2:5) {
+  query <- paste0("SELECT count(*) FROM all_deaths WHERE ", "race_recode_5", 
+                  " = '", names(code_names[[31]])[ll], "' AND hispanic_origin < '200'")
+  print(query)
+  res <- dbSendQuery(dcon, query)
+  race_counts[ll] <- unlist(dbFetch(res, -1))
+  dbClearResult(res)
+}
+
+race_df <- data.frame(Level = c("Hispanic", unlist(code_names[[31]][2:5])),
+                      Count = race_counts)
+
+# Education
+
+edu_counts <- numeric(9)
+# 8th or less
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE education_1989_revision = '01' 
+                   OR education_1989_revision = '04' OR education_1989_revision = '07' 
+                   OR education_1989_revision = '10' OR education_1989_revision = '13' 
+                   OR education_1989_revision = '14' OR education_1989_revision = '15' 
+                   OR education_1989_revision = '16' OR education_1989_revision = '17'
+                   OR education_2003_revision = '1';")
+edu_counts[1] <- unlist(dbFetch(res, -1))
+dbClearResult(res)
+# HS 
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE education_1989_revision = '02' 
+                   OR education_1989_revision = '05' OR education_1989_revision = '08'
+                   OR education_2003_revision = '2';")
+edu_counts[2] <- unlist(dbFetch(res, -1))
+dbClearResult(res)
+# HS Grad
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE education_1989_revision = '11'
+                   OR education_2003_revision = '3';")
+edu_counts[3] <- unlist(dbFetch(res, -1))
+dbClearResult(res)
+# Some college
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE education_1989_revision = '00' 
+                   OR education_1989_revision = '03' OR education_1989_revision = '06'
+                   OR education_2003_revision = '4';")
+edu_counts[4] <- unlist(dbFetch(res, -1))
+dbClearResult(res)
+# Bachelor's
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE education_1989_revision = '09' 
+                   OR education_1989_revision = '12' OR education_2003_revision = '6';")
+edu_counts[6] <- unlist(dbFetch(res, -1))
+dbClearResult(res)
+# Unknown
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE education_1989_revision = '99';")
+edu_counts[9] <- unlist(dbFetch(res, -1))
+dbClearResult(res)
+# Associate
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE education_2003_revision = '5';")
+edu_counts[5] <- unlist(dbFetch(res, -1))
+dbClearResult(res)
+# PHD
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE education_2003_revision = '8';")
+edu_counts[8] <- unlist(dbFetch(res, -1))
+dbClearResult(res)
+# Master's
+res <- dbSendQuery(dcon, "SELECT count(*) FROM all_deaths WHERE education_2003_revision = '7';")
+edu_counts[7] <- unlist(dbFetch(res, -1))
+dbClearResult(res)
+edu_df <- data.frame(Level = c("< 8th Grade", "9th-12th", "HS Grad", "Some College", 
+                                "Associate", "Bachelor's", "Doctorate", "Master's", "Unknown"),
+                      Count = edu_counts)
+
+#Year
+year_count <- numeric(11)
+for (ll in 2:5) {
+  query <- paste0("SELECT count(*) FROM all_deaths WHERE ", "race_recode_5", 
+                  " = '", names(code_names[[31]])[ll], "' AND hispanic_origin < '200'")
+  print(query)
+  res <- dbSendQuery(dcon, query)
+  race_counts[ll] <- unlist(dbFetch(res, -1))
+  dbClearResult(res)
+}
+
+### DESIRED SUBSET ###
+dbSendQuery(dcon, "CREATE TABLE mortality_data AS SELECT * FROM all_deaths 
+                   WHERE icd_code_10th_revision >= 'X60' AND icd_code_10th_revision <= 'X84';")
+
+res <- dbSendQuery(dcon_suicide, "SELECT * FROM mortality_data;")
+mortality_data <- dbFetch(res, -1)
+dbClearResult(res)
+
+mortality_data$detail_age <- as.numeric(mortality_data$detail_age)
+mortality_data$hispanic_origin <- as.numeric(mortality_data$hispanic_origin)
+mortality_data  <- mortality_data %>%  modify_if(is.character, factor) 
+
+for(ii in 1:length(code_names)){
+  if("Blank" %in% names(code_names[[ii]])) {
+    names(code_names[[ii]])[which(names(code_names[[ii]]) == "Blank")]  <- ""
+  }
+}
+
+valid_cols <- names(code_names)
+remove <- c("education_1989_revision", "icd_code_10th_revision", "hispanic_origin", 
+            "39_cause_recode", "current_data_year", "education_2003_revision", 
+            "icd_code_10", "method_of_disposition", "130_infant_cause_recode")
+valid_cols <- valid_cols[!(valid_cols %in% remove)]
+
+for(jj in valid_cols) {
+  levels(mortality_data[[jj]]) <- unlist(code_names[[jj]][match(levels(mortality_data[[jj]]), names(code_names[[jj]]))])
+}
+
+
+levels(mortality_data$method_of_disposition) <- c("Burial", "Cremation", "D", "E", "Other", "R", "U")
+levels(mortality_data$autopsy) <- c("No", "Unknown", "Yes")
+
+
+mortality_data[, 30:49] <- apply(mortality_data[, 30:49], 2, substring, 3)
+
+mortality_data$icd_code_10th_revision <- factor(mortality_data$icd_code_10th_revision)
+mortality_data$icd_code_10th_desc <- mortality_data$icd_code_10th_revision
+levels(mortality_data$icd_code_10th_desc) <- ifelse(is.na(icd10cm2016$long_desc[match(levels(mortality_data$icd_code_10th_desc), icd10cm2016$code)]),
+                                                  levels(mortality_data$icd_code_10th_desc),
+                                                  icd10cm2016$long_desc[match(levels(mortality_data$icd_code_10th_desc), icd10cm2016$code)])
+
+mortality_data$icd_code_10th_desc <- fct_recode(mortality_data$icd_code_10th_desc,
+                                              "Intentional self-harm by hanging, strangulation and suffocation" = "X70",
+                                              "Intentional self-poisoning by and exposure to other and unspecified drugs, medicaments and biological substances" = "X64",
+                                              "Intentional self-poisoning by and exposure to other gases and vapours" = "X67",
+                                              "Intentional self-poisoning by and exposure to antiepileptic, sedative-hypnotic, antiparkinsonism and psychotropic drugs, not elsewhere classified" = "X61",
+                                              "Intentional self-poisoning by and exposure to narcotics and psychodysleptics [hallucinogens], not elsewhere classified" = "X62",
+                                              "Intentional self-poisoning by and exposure to nonopioid analgesics, antipyretics and antirheumatics" = "X60",
+                                              "Intentional self-harm by unspecified means" = "X84",
+                                              "Intentional self-poisoning by and exposure to organic solvents and halogenated hydrocarbons and their vapours" = "X66",
+                                              "Intentional self-poisoning by and exposure to other and unspecified chemicals and noxious substances" = "X69",
+                                              "Intentional self-poisoning by and exposure to alcohol" = "X65",
+                                              "Intentional self-poisoning by and exposure to other drugs acting on the autonomic nervous system" = "X63",
+                                              "Sequelae of intentional self-harm" = "Y870",
+                                              "Accidental poisoning by and exposure to other and unspecified drugs, medicaments and biological subs" = "X44",
+                                              "Inhalation and ingestion of other objects causing obstruction of respiratory tract" = "W80",
+                                              "Intentional self-poisoning by and exposure to pesticides" = "X68",
+                                              "Atherosclerotic cardiovascular disease" = "I250",
+                                              "Accidental poisoning by and exposure to antiepileptic, sedative-hypnotic, antiparkinsonism and psychotropic drugs, not elsewhere classified" = "X41",
+                                              "Accidental poisoning by and exposure to narcotics and psychodysleptics [hallucinogens], not elsewhere classified" = "X42",
+                                              "Accidental poisoning by and exposure to other gases and vapours" = "X47",
+                                              "Acute myocardial infarction" = "I249",
+                                              "Acute intoxication, alcohol" = "F100",
+                                              "Other specified threats to breathing" = "W83")
+
+
+for(kk in grep("record_condition", names(mortality_data))) {
+  mortality_data[[kk]] <- factor(mortality_data[[kk]])
+  mortality_data <- cbind(mortality_data, mortality_data[[kk]])
+  levels(mortality_data[[ncol(mortality_data)]]) <- ifelse(is.na(icd10cm2016$long_desc[match(levels(mortality_data[[ncol(mortality_data)]]), icd10cm2016$code)]),
+                                                       levels(mortality_data[[ncol(mortality_data)]]),
+                                                       icd10cm2016$long_desc[match(levels(mortality_data[[ncol(mortality_data)]]), icd10cm2016$code)])
+  mortality_data[[ncol(mortality_data)]] <- fct_recode(mortality_data[[ncol(mortality_data)]],
+                                                   "Intentional self-harm by hanging, strangulation and suffocation" = "X70",
+                                                   "Intentional self-poisoning by and exposure to other and unspecified drugs, medicaments and biological substances" = "X64",
+                                                   "Intentional self-poisoning by and exposure to other gases and vapours" = "X67",
+                                                   "Intentional self-poisoning by and exposure to antiepileptic, sedative-hypnotic, antiparkinsonism and psychotropic drugs, not elsewhere classified" = "X61",
+                                                   "Intentional self-poisoning by and exposure to narcotics and psychodysleptics [hallucinogens], not elsewhere classified" = "X62",
+                                                   "Intentional self-poisoning by and exposure to nonopioid analgesics, antipyretics and antirheumatics" = "X60",
+                                                   "Intentional self-harm by unspecified means" = "X84",
+                                                   "Intentional self-poisoning by and exposure to organic solvents and halogenated hydrocarbons and their vapours" = "X66",
+                                                   "Intentional self-poisoning by and exposure to other and unspecified chemicals and noxious substances" = "X69",
+                                                   "Intentional self-poisoning by and exposure to alcohol" = "X65",
+                                                   "Intentional self-poisoning by and exposure to other drugs acting on the autonomic nervous system" = "X63",
+                                                   "Sequelae of intentional self-harm" = "Y870",
+                                                   "Accidental poisoning by and exposure to other and unspecified drugs, medicaments and biological subs" = "X44",
+                                                   "Inhalation and ingestion of other objects causing obstruction of respiratory tract" = "W80",
+                                                   "Intentional self-poisoning by and exposure to pesticides" = "X68",
+                                                   "Atherosclerotic cardiovascular disease" = "I250",
+                                                   "Accidental poisoning by and exposure to antiepileptic, sedative-hypnotic, antiparkinsonism and psychotropic drugs, not elsewhere classified" = "X41",
+                                                   "Accidental poisoning by and exposure to narcotics and psychodysleptics [hallucinogens], not elsewhere classified" = "X42",
+                                                   "Accidental poisoning by and exposure to other gases and vapours" = "X47",
+                                                   "Acute myocardial infarction" = "I249",
+                                                   "Acute intoxication, alcohol" = "F100",
+                                                   "Other specified threats to breathing" = "W83",
+                                                   "Open wound of unspecified body region" = "T141")
+}
+
+names(mortality_data)[79:98] <- c(paste0("record_condition_", 1:20,"_desc"))
+
+for(kk in grep("entity_condition", names(mortality_data))) {
+  mortality_data[[kk]] <- factor(mortality_data[[kk]])
+  mortality_data <- cbind(mortality_data, mortality_data[[kk]])
+  levels(mortality_data[[ncol(mortality_data)]]) <- ifelse(is.na(icd10cm2016$long_desc[match(levels(mortality_data[[ncol(mortality_data)]]), icd10cm2016$code)]),
+                                                       levels(mortality_data[[ncol(mortality_data)]]),
+                                                       icd10cm2016$long_desc[match(levels(mortality_data[[ncol(mortality_data)]]), icd10cm2016$code)])
+  mortality_data[[ncol(mortality_data)]] <- fct_recode(mortality_data[[ncol(mortality_data)]],
+                                                   "Intentional self-harm by hanging, strangulation and suffocation" = "X70",
+                                                   "Intentional self-poisoning by and exposure to other and unspecified drugs, medicaments and biological substances" = "X64",
+                                                   "Intentional self-poisoning by and exposure to other gases and vapours" = "X67",
+                                                   "Intentional self-poisoning by and exposure to antiepileptic, sedative-hypnotic, antiparkinsonism and psychotropic drugs, not elsewhere classified" = "X61",
+                                                   "Intentional self-poisoning by and exposure to narcotics and psychodysleptics [hallucinogens], not elsewhere classified" = "X62",
+                                                   "Intentional self-poisoning by and exposure to nonopioid analgesics, antipyretics and antirheumatics" = "X60",
+                                                   "Intentional self-harm by unspecified means" = "X84",
+                                                   "Intentional self-poisoning by and exposure to organic solvents and halogenated hydrocarbons and their vapours" = "X66",
+                                                   "Intentional self-poisoning by and exposure to other and unspecified chemicals and noxious substances" = "X69",
+                                                   "Intentional self-poisoning by and exposure to alcohol" = "X65",
+                                                   "Intentional self-poisoning by and exposure to other drugs acting on the autonomic nervous system" = "X63",
+                                                   "Sequelae of intentional self-harm" = "Y870",
+                                                   "Accidental poisoning by and exposure to other and unspecified drugs, medicaments and biological subs" = "X44",
+                                                   "Inhalation and ingestion of other objects causing obstruction of respiratory tract" = "W80",
+                                                   "Intentional self-poisoning by and exposure to pesticides" = "X68",
+                                                   "Atherosclerotic cardiovascular disease" = "I250",
+                                                   "Accidental poisoning by and exposure to antiepileptic, sedative-hypnotic, antiparkinsonism and psychotropic drugs, not elsewhere classified" = "X41",
+                                                   "Accidental poisoning by and exposure to narcotics and psychodysleptics [hallucinogens], not elsewhere classified" = "X42",
+                                                   "Accidental poisoning by and exposure to other gases and vapours" = "X47",
+                                                   "Acute myocardial infarction" = "I249",
+                                                   "Acute intoxication, alcohol" = "F100",
+                                                   "Other specified threats to breathing" = "W83",
+                                                   "Open wound of unspecified body region" = "T141")
+}
+
+names(mortality_data)[99:118] <- c(paste0("entity_condition_", 1:20,"_desc"))
+
+
+```
+
+```{r eval=FALSE}
+mortality_data$education_2003_revision <- factor(ifelse(mortality_data$education_2003_revision == "", 
+                                                 NA, mortality_data$education_2003_revision))
+switchEd8th<-levels(mortality_data$education_1989_revision)[c(2,5,8,11,14,15,16,17,18)]
+switchEdHS<-levels(mortality_data$education_1989_revision)[c(3,6,9)]
+switchEdHSgrad<-levels(mortality_data$education_1989_revision)[12]
+switchEdCol<-levels(mortality_data$education_1989_revision)[c(1,4,7)]
+switchEdBS<-levels(mortality_data$education_1989_revision)[c(10, 13)]
+switchEdUn<-levels(mortality_data$education_1989_revision)[19]
+
+EdLevels<-list(switchEd8th, switchEdHS, switchEdHSgrad, switchEdCol, switchEdBS, switchEdUn)
+newEd<-levels(mortality_data$education_2003_revision)[c(1,2,6,8,4,9)]
+
+
+mortality_data<-mortality_data%>%
+#Renames education_2003 only for those that were NA
+    mutate(education_2003_revision = case_when(
+        education_1989_revision %in% EdLevels[[1]]~ newEd[1],
+        education_1989_revision %in% EdLevels[[2]]~ newEd[2], 
+        education_1989_revision %in% EdLevels[[3]]~ newEd[3],
+        education_1989_revision %in% EdLevels[[4]]~ newEd[4],
+        education_1989_revision %in% EdLevels[[5]]~ newEd[5], 
+        education_1989_revision %in% EdLevels[[6]]~ newEd[6], 
+        TRUE ~ as.character(education_2003_revision)))%>%
+
+#Fixing Hospital, Clinic or Medical Center and Decedent's home labels
+    mutate(place_of_death_and_decedents_status=case_when(
+        place_of_death_and_decedents_status=="Hospital, clinic or Medical Center"~
+        "Hospital, Clinic or Medical Center",
+        place_of_death_and_decedents_status==levels(factor(place_of_death_and_decedents_status))[1]~"Decedent's home",
+        TRUE ~ as.character(place_of_death_and_decedents_status)))%>%
+
+#Fixing master's/bachelor's labels
+    mutate(education_2003_revision = case_when(
+        education_2003_revision==levels(factor(education_2003_revision))[4]~ "Bachelor's degree",
+        education_2003_revision==levels(factor(education_2003_revision))[7]~ "Master's degree",
+        TRUE ~ as.character(education_2003_revision)))
+
+mortality_data$education_2003_revision <- factor(mortality_data$education_2003_revision)
+levels(mortality_data$education_2003_revision) <- c("< 8th Grade", "9th-12th", "HS Grad", "Some College", "Associate", "Bachelor's", "Doctorate", "Master's", "Unknown")
+```
+
+```{r}
+# this.dir <- dirname(parent.frame(2)$ofile)
+# setwd(this.dir)
+# setwd("C:/Users/eliss/OneDrive/Documents/Test")
+#setwd("D:/F17/605/Project/Test")
+load("./project_env_1.RData")
+dcon_suicide <- dbConnect(SQLite(), dbname = "./mortality.sqlite")
+# mortality_data <- read_csv("mortality_data.csv")
+# mortality_data  <- mortality_data %>%  modify_if(is.character, factor) 
+```
+
+
+
+# Introduction
+With suicide rates in the United States increasing from 1.2% in 2005 to 1.6% in 2015, suicide prevention efforts have become more necessary [1]. The numerous factors that could contribute to an individual's ideation can quickly become complex, thus making identification of an at-risk individual more difficult. We are interested in the combinations of factors that correlate with a higher rate of suicide.
+
+Our data consists of death records obtained and reported by the Center for Disease Control and Prevention (CDC) [2]. Each annual report contains records for each death in the United States that occurred in the prior year. Our data set combines the reports to contain death data from 2005 to 2015, totaling approximately 30 million observations. Reported variables for each death include demographics such as age, race, gender, resident status, education level, and marital status. Information about the activity, location, day of the week and month of death, manner of death, cause(s) of death (ICD-10 classification codes), and the method of disposition are also reported. 
+
+We focus on the cases of suicide (approximately 420 thousand), which we define to be the cases where the ICD-10 classification for the cause of death was one of the twenty-five intentional self-harm categories. The overall data set is used as a point of comparison. To explore the relationships between variables, we first examine the suicide rates vs overall deaths in varying demographic groups and conditions surrounding the death. We then investigate the suicide methods utilized. We group the different intentional self-harm codes into seven broadly-defined categories: firearms, asphyxiation, jumping, drugs, solid or liquid poisoning, gas poisoning, and miscellaneous methods. We compare these new categories based on the relative frequency by which they are used and determine if the frequencies differ based on other variables. Lastly, we use a model to determine the relationship between the method used and demographics. 
+
+```{r, cache = FALSE}
+# cbPalette <- c("#56B4E9", "#009E73", "#D55E00", "#999999",
+#                "#F0E442", "#0072B2", "#CC79A7", "#E69F00")
+cbPalette <- c("#CC79A7", "#D55E00", "#56B4E9", "#F0E442",
+               "#009E73", "#0072B2", "#999999", "#E69F00")
+mortality_data$`358_cause_recode` <- factor(mortality_data$`358_cause_recode`)
+mortality_data$short_358 <- mortality_data$`358_cause_recode`
+
+levels(mortality_data$short_358) <- c("Misc.", "Firearms", "Asphyxiation", "Jumping",
+                               "Drugs", "Solid/Liquid Poisoning", "Gas Poisoning")
+# mortality_data$short_358 <- fct_relevel(mortality_data$short_358, sort(levels(mortality_data$short_358)[-7]), "Misc.")
+
+mortality_data$month_of_death <- fct_relevel(mortality_data$month_of_death, 
+                                      c("January", "February", "March", "April", 
+                                        "May", "June", "July", "August", "September", 
+                                        "October", "November", "December"))
+mortality_data$education_2003_revision <- fct_relevel(mortality_data$education_2003_revision, c("< 8th Grade", "9th-12th", "HS Grad", "Some College", "Associate", "Bachelor's", "Master's", "Doctorate", "Unknown"))
+
+
+```
+
+```{r eval = FALSE}
+dbSendQuery(dcon, "ALTER TABLE mortality_data
+  ADD short_358 char;")
+query <- paste0("INSERT INTO mortality_data(short_358) VALUES ('", 
+                paste0(mortality_data$short_358, collapse = "'), ('"), "');")
+dbSendQuery(dcon, query)
+```
+
+
+#Comparison of Proportion of Suicides vs Overall Deaths
+## Day and Month of Death
+```{r, fig.height = 3.2, out.width='.49\\linewidth', fig.show='hold', fig.align='center'}
+deathPalette <- c("#000000", "#d83c3c")
+#Day
+day_df<-cbind(day_of_week_of_death_df, "Prop" = day_of_week_of_death_df[,2]/sum(day_of_week_of_death_df[,2]))
+s_day<-mortality_data%>%
+    count(day_of_week_of_death)%>%
+    modify_if(is.character, factor)%>%
+    mutate(Prop = n/sum(n))%>%
+    rename(Count=n, Level=day_of_week_of_death)
+so_day<-bind_rows("Suicide"=s_day, "Overall"=day_df, .id='group')
+so_day$Level<- fct_relevel(so_day$Level, 
+                                      c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+ggplot(data=so_day, aes(fill=group, x=Level, y=Prop)) + geom_bar(stat="identity",position="dodge") + theme1 +
+        labs(x="Day of Death", y="Proportion", fill="Death Type", title = "Figure 1: Distribution by Day of Week") +
+  scale_fill_manual(values = deathPalette) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#Month
+month_df<-cbind(month_of_death_df, "Prop" = month_of_death_df[,2]/sum(month_of_death_df[,2]))
+s_month<-mortality_data%>%
+    count(month_of_death)%>%
+    modify_if(is.character, factor)%>%
+    mutate(Prop=n/sum(n))%>%
+    rename(Count=n, Level=month_of_death)
+so_month<-bind_rows("Suicide" = s_month, "Overall" = month_df, .id="group")
+so_month$Level <- fct_relevel(so_month$Level, 
+                                      c("January", "February", "March", "April", 
+                                        "May", "June", "July", "August", "September", 
+                                        "October", "November", "December"))
+
+ggplot(data=so_month, aes(fill=group, x=Level, y=Prop)) + geom_bar(stat="identity",position="dodge") + theme1 +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + labs(x="Month of Death", y="Proportion", fill="Death Type",
+                                                                    title = "Figure 2: Distribution by Month") +
+  scale_fill_manual(values = deathPalette)
+```
+
+In Figures 1 and 2, the proportion of overall deaths and of deaths by suicide is shown for each day and month, respectively. January appears to have the highest proportion of overall deaths with 90% while June is the lowest with 77%. The proportion of deaths by suicide is highest in May and July with approximately 84% and the lowest in February with 75%. For day of the week, the proportions of the two do not seem to differ much. Monday shows the largest difference in proportions with approximately 17% of the deaths by suicide compared to 14% of overall death causes. 
+
+
+## Age Group
+```{r , fig.height = 3.2}
+age_df<-cbind(age_recode_12_df, "Prop" = age_recode_12_df[,2]/sum(age_recode_12_df[,2]))
+levels(age_df[,1])[12]<-"Under 1 year"
+s_age<-mortality_data%>%
+    count(age_recode_12)%>%
+    modify_if(is.character, factor)%>%
+    mutate(Prop = n/sum(n))%>%
+    rename(Count=n, Level=age_recode_12)
+so_age<-bind_rows("Suicide"=s_age, "Overall"=age_df, .id='group')
+so_age$Level<-fct_relevel(so_age$Level, c("Under 1 year", "1 - 4 years", "5 - 14 years", "15 - 24 years",
+                                         "25 - 34 years", "35 - 44 years", "45 - 54 years", "55 - 64 years",
+                                        "65 - 74 years", "75 - 84 years", "85 years and over", "Age not stated"))
+
+
+ggplot(data=so_age, aes(fill=group, x=Level, y=Prop)) + geom_bar(stat="identity",position="dodge") + theme1 +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + labs(x="Age Level", y="Proportion", fill="Death Type",
+                                                                    title = "Figure 3: Distribution by Age Group") +
+  scale_fill_manual(values = deathPalette)
+
+```
+In Figure 3, the proportion of deaths by suicide and overall deaths for each age group is shown. This graph shows the proportion of suicides that occur in younger people (15-54 years) is substantially higher than the proportion of overall deaths that occur in these ages. Individuals who are older make up a higher proportion of overall deaths than suicides. 
+
+##Education
+```{r, fig.height = 3.2}
+edu_dfsr<-cbind(edu_df, "Prop" = edu_df[,2]/sum(edu_df[,2]))
+s_edu<-mortality_data%>%
+    count(education_2003_revision)%>%
+    modify_if(is.character, factor)%>%
+    mutate(Prop = n/sum(n))%>%
+    rename(Count=n, Level=education_2003_revision)
+so_edu<-bind_rows("Suicide"=s_edu, "Overall"=edu_dfsr, .id='group')
+ggplot(data=so_edu, aes(fill=group, x=Level, y=Prop)) + geom_bar(stat="identity",position="dodge") + theme1 +
+    labs(title="Figure 4: Distribution by Education Level", x="Education Level", y="Proportion", fill="Type")+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = deathPalette)
+```
+Figure 4 shows the education level vs. the proportion of deaths by suicide and overall deaths. The largest proportion of individuals who die by suicide (40%) are shown to have only a high school degree. Comparatively, the proportion of overall deaths that occur in individuals with a high schol degree is only 31%. The largest difference in proportions within an education level is observed in the 8th grade or less education category. In this group, 20% of all individuals have this education level, while only 4% of individuals who die by suicide have an education of 8th grade or less. 
+
+##Sex
+```{r, fig.height = 3.2}
+sex_dfsr<-cbind(sex_df, "Prop" = sex_df[,2]/sum(sex_df[,2]))
+s_sex<-mortality_data%>%
+    count(sex)%>%
+    modify_if(is.character, factor)%>%
+    mutate(Prop = n/sum(n))%>%
+    rename(Count=n, Level=sex)
+so_sex<-bind_rows("Suicide"=s_sex, "Overall"=sex_dfsr, .id='group')
+ggplot(data=so_sex, aes(fill=group, x=Level, y=Prop)) + geom_bar(stat="identity",position="dodge") + theme1 +
+    theme(axis.text.x = element_text(hjust = 1)) + labs(x="Sex", y="Proportion", fill="Death Type",
+                                                                    title = "Figure 5: Distribution by Sex") +
+  scale_fill_manual(values = deathPalette) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Figure 5 shows the sex vs. the proportion of deaths overall and deaths by suicide. The proportion of overall deaths is roughly equal (45%) in both males and females. However, the proportion of suicides is much higher in males than in females. 
+
+
+##Marital Status
+```{r, fig.height = 3.2}
+ms_df<-cbind(marital_status_df, "Prop" = marital_status_df[,2]/sum(marital_status_df[,2]))
+s_ms<-mortality_data%>%
+    count(marital_status)%>%
+    modify_if(is.character, factor)%>%
+    mutate(Prop = n/sum(n))%>%
+    rename(Count=n, Level=marital_status)
+so_ms<-bind_rows("Suicide"=s_ms, "Overall"=ms_df, .id='group')
+ggplot(data=so_ms, aes(fill=group, x=Level, y=Prop)) + geom_bar(stat="identity",position="dodge") + theme1 +
+    labs(x="Marital Status", y="Proportion", fill="Death Type",title = "Figure 6: Distribution by Marital Status") +
+  scale_fill_manual(values = deathPalette) +
+    theme(axis.text.x = element_text(angle = 25, hjust = 1))
+```
+In Figure 6, the proportion of overall deaths and suicides in each marital status category is shown. In the "never married, and single" category, the proportion of people who commit suicide is the highest (38%) compared to the proportion of overall deaths (15%). The proportion of overall deaths (36%) is much higher than the proportion of suicide deaths in the "widowed" category (7%). The proportion of deaths by suicide is higher than the proportion of overall deaths in the "divorced" category. The proportions are similar in the "married" category. 
+
+##Race
+```{r, fig.height = 3}
+mortality_data$race_new <- as.character(mortality_data$race_recode_5)
+mortality_data$race_new <- factor(ifelse(mortality_data$hispanic_origin < 200, mortality_data$race_new, "Hispanic"))
+race_dfsr<-cbind(race_df, "Prop" = race_df[,2]/sum(race_df[,2]))
+s_race<-mortality_data%>%
+    count(race_new)%>%
+    modify_if(is.character, factor)%>%
+    mutate(Prop = n/sum(n))%>%
+    rename(Count=n, Level=race_new)
+so_race<-bind_rows("Suicide"=s_race, "Overall"=race_dfsr, .id='group')
+ggplot(data=so_race, aes(fill=group, x=Level, y=Prop)) + geom_bar(stat="identity",position="dodge") + theme1 +
+    labs(x="Race", y="Proportion", fill="Death Type", title = "Figure 7: Distribution by Race") +
+  scale_fill_manual(values = deathPalette) +
+    theme(axis.text.x = element_text(angle = 25, hjust = 1))
+```
+In Figure 7, the proportion of suicides and overall deaths of each race category is shown. In each race, the proportion of overall deaths is roughly the same. In both suicides and overall deaths, the highest proportions are of white individuals. The proportion of overall deaths that were black individuals is roughy 4% higher than the proportion of suicides committed by blacks.
+
+
+# Suicide Methods
+```{r , fig.height = 3.6}
+suicides <- ggplot(mortality_data, aes(short_358))
+ps <- suicides+geom_bar(aes(fill = short_358))+xlab("Methods of Suicide")+ylab("Number of Suicides")+
+  ggtitle("Figure 8: Suicides by Method") +
+  theme1 +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(fill = FALSE) +
+  scale_fill_manual(values = cbPalette)
+
+
+res2 <- dbSendQuery(con = dcon_suicide,
+"SELECT short_358 , count(*)
+FROM mortality_data
+GROUP BY short_358;
+                    ")
+data2=fetch(res2)
+data2$`count(*)` <- round(data2$`count(*)` / nrow(mortality_data), 4)
+dbClearResult(res2)
+# 
+# lay <- rbind(c(1,1,1,2,2),
+#              c(1,1,1,2,2),
+#              c(1,1,1,2,2),
+#              c(1,1,1,NA,NA))
+# 
+# grid.arrange(ps, 
+#              tableGrob(data2,
+#                        rows = NULL,
+#                        cols = c('Suicide Methods','Proportion'),
+#                        theme = ttheme_minimal(base_size = 10)) %>% 
+#                 gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+#                 gtable_add_grob(list(textGrob("Method Counts", gp = gpar(fontsize = 14))), 
+#                                 t = 1, l = 1, r = ncol(data2)), 
+#              layout_matrix = lay)
+
+misc_data <- mortality_data %>% filter(short_358 == "Misc.")
+
+levels(misc_data$icd_code_10th_desc)[which(table((misc_data$icd_code_10th_desc)) != 0)] <- c("Blunt Object", "Motor Vehicle Crash",
+                                          "Drowning", "Explosion", "Jump in Front",
+                                          "Misc.", "Sharp Object", "Fire",
+                                          "Hot Objects", "Unspecified")
+
+pmisc<- ggplot(data = misc_data) +
+  geom_bar(aes(x = icd_code_10th_desc),
+           fill = "#CC79A7") +
+  theme1 +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1, size = 6),
+        title = element_text(size = 6),
+        axis.title.x = element_text(size = 6),
+        axis.title.y = element_text(size = 6),
+        axis.text.y = element_text(size = 6)) +
+    # theme(axis.text.x = element_blank(),
+    #     text = element_text(size = 4)) +
+  labs(x = "Methods",
+       y = "Count",
+       title = "Misc. Methods")
+
+res6 <- dbSendQuery(conn = dcon_suicide, "
+                   SELECT icd_code_10th_desc, count(*)
+                    FROM mortality_data
+                    WHERE short_358='Misc.'
+                    GROUP BY icd_code_10th_desc ;
+                    ")
+
+data6=fetch(res6)
+
+data6$`count(*)` <- round(data6$`count(*)` / nrow(misc_data), 4)
+
+data6$icd_code_10th_desc <- c("Blunt Object", "Motor Vehicle Crash",
+                                          "Drowning", "Explosion", "Jump in Front",
+                                          "Misc.", "Sharp Object", "Fire",
+                                          "Hot Objects", "Unspecified")
+
+dbClearResult(res6)
+
+lay <- rbind(c(1,1,2,2),
+             c(1,1,2,2),
+             c(1,1,2,2),
+             c(1,1,2,2),
+             c(1,1,2,2),
+             c(1,1,2,2))
+
+vp <- viewport(x = 0.5, y = 0.5, width = 1, height = 1)
+print(ps, vp = vp)
+vp2 <- viewport(x = 0.76, y = 0.74, width = 0.45, height = 0.45)
+print(pmisc, vp = vp2)
+```
+
+```{r fig.height = 2.8}
+grid.arrange(tableGrob(data2,
+                       rows = NULL,
+                       cols = c('Suicide Methods','Proportion'),
+                       theme = ttheme_minimal(base_size = 8)) %>%
+                gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+                gtable_add_grob(list(textGrob("Method Counts", gp = gpar(fontsize = 14))),
+                                t = 1, l = 1, r = ncol(data2)),
+             tableGrob(data6,
+                       rows = NULL,
+                       cols = c('Misc. Method','Proportion'),
+                       theme = ttheme_minimal(base_size = 8)) %>%
+                gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+                gtable_add_grob(list(textGrob("Miscellaneous Methods", gp = gpar(fontsize = 13))),
+                                t = 1, l = 1, r = ncol(data6)),
+             layout_matrix = lay)
+```
+
+Figure 8 shows the overall distribution of methods of suicide in the data and the breakdown of the miscellaneous category. Firearms are by far the most popular way for people to kill themselves, being utilized in approximately 50% of the total number of suicides. Asphyxiation by hanging or strangulation and overdosing on drugs are also fairly common, making up approxmately 25% and 15% of the number of suicides, respectively. The miscellaneaous category covers a large variety of methods, ranging from methods such as setting oneself on fire to crashing a motor vehicle. The most popular methods in the miscellaneous group are the usage of sharp objects such as knives, jumping in front of a large moving object, and drowning.
+
+
+## Sex
+```{r, fig.height = 3.2, fig.width = 9}
+suicidessex2 <- ggplot(mortality_data, aes(sex, fill=short_358))
+pgender <- suicidessex2+geom_bar(position="fill")+xlab("Sex")+ylab("Proportion of Suicides")+
+  labs(title = "Figure 9: Method by Gender", fill = "Method") +
+  theme1 +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = cbPalette)
+
+res9 <- dbSendQuery(conn = dcon_suicide, "
+                   SELECT sex, short_358, count(*)
+                    FROM mortality_data
+                    GROUP BY sex, short_358 ;
+                    ")
+
+data9=fetch(res9)
+
+data9 <- reshape(data9, v.names = "count(*)", idvar = "sex", timevar = "short_358", direction = "wide")
+data9[, -1] <- t(apply(data9[, -1], 1, function(x) return(round(x / sum(x), 4))))
+colnames(data9) <- c("Gender", sort(levels(mortality_data$short_358)))
+rownames(data9) <- NULL
+
+transposeG<-as.data.frame(t(data9))
+rownames(transposeG) <- c("Sex", sort(levels(mortality_data$short_358)))
+colnames(transposeG) <- NULL
+lay <- (rbind(c(1,1,1,2,2,2),
+             c(1,1,1,2,2,2),
+             c(1,1,1,2,2,2),
+             c(1,1,1,2,2,2),
+             c(1,1,1,2,2,2),
+             c(1,1,1,2,2,2),
+             c(1,1,1,NA,NA,NA),
+             c(1,1,1,NA,NA,NA)))
+
+#pgender
+#```
+
+#```{r fig.height = 1, fig.width = 8}
+#grid.arrange(tableGrob(data9,
+#                       rows = NULL,
+#                       theme = ttheme_minimal(base_size = 10)) %>% 
+#                gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+#                gtable_add_grob(list(textGrob("Proportion of Methods by Sex", gp = gpar(fontsize = 13))), 
+#                                t = 1, l = 1, r = ncol(data9)))
+
+
+grid.arrange(pgender,tableGrob(transposeG,
+                       rows = rownames(transposeG),
+                       theme = ttheme_minimal(base_size = 10)) %>% 
+                gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+                gtable_add_grob(list(textGrob("Method Proportions by Sex", gp = gpar(fontsize = 12))), 
+                                t = 1, l = 1, r = ncol(transposeG)),
+             layout_matrix=lay)
+
+dbClearResult(res9)
+```
+
+Figure 9 shows the distribution of suicide methods depending on the sex of the person. Firearms and asphyxiation are relatively more popular methods of suicide amongst males compared to females. In particular, firearms make up more than 50% of male suicides, while only contributing to about 25% of female suicides. Drugs and miscellaneous methods are relatively more popular amongst females compared to males. In particular, drugs compose about 30% of female suicides and less than 10% of male suicides.
+
+## Age
+```{r fig.height = 3.7}
+ggplot(data = mortality_data) +
+  geom_density(aes(x = detail_age), kernel = "gaussian") +
+  facet_wrap(~ short_358, scales = "free")+
+  labs(x = "Age of Deceased",
+       y = "Density Estimate",
+       title = "Figure 10: Age Distribution of Suicide Methods") +
+  theme1 +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_continuous(limits = c(0, 100))
+```
+
+Figure 10 shows the kernel density estimates of the distributions of the ages of people who committed suicide, conditional on method. The densities were calculated using a Gaussian kernel. In general, we see bimodal distributions for the methods, with modes around 25 and 50 years of age. However, the size of the mode at 25 years of age relative to that at 50 years of age is highly dependent on method. Younger people comprise a large proportion of those who kill themselves by jumping from height, asphyxiation, and firearms, while those who kill themselves by using drugs or poisoning are much more likely to be older, middle-aged people.
+
+
+
+## Marital Status
+
+```{r, fig.height = 3}
+suicidesmarital <- ggplot(mortality_data, aes(marital_status, fill=short_358))
+sm<-suicidesmarital+geom_bar(position="fill")+xlab("Marital Status")+ylab("Proportion")+
+  ggtitle("Figure 11: Methods by Marital Status")+
+  scale_fill_manual(values = cbPalette) +
+  labs(fill = "Method") +
+  theme1 +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(fill = FALSE)
+
+res10 <- dbSendQuery(conn = dcon_suicide, "
+                   SELECT marital_status, short_358, count(*)
+                    FROM mortality_data
+                    GROUP BY marital_status, short_358 ;
+                    ")
+
+data10=fetch(res10)
+
+data10 <- reshape(data10, v.names = "count(*)", timevar = "short_358", idvar = "marital_status", direction = "wide")
+data10[, -1] <- t(apply(data10[, -1], 1, function(x) return(round(x / sum(x), 4))))
+colnames(data10) <- c("Status", sort(levels(mortality_data$short_358)))
+data10$Status <- c("Divorced", "Married", "Single", "Widowed", "Unknown")
+rownames(data10) <- NULL
+
+transposeM<-as.data.frame(t(data10))
+rownames(transposeM) <- c("Marital Status", sort(levels(mortality_data$short_358)))
+colnames(transposeM) <- NULL
+lay <- (rbind(c(1,1,1,NA,NA,NA,NA),
+             c(1,1,1,2,2,2,2),
+             c(1,1,1,2,2,2,2),
+             c(1,1,1,2,2,2,2),
+             c(1,1,1,NA,NA,NA,NA),
+             c(1,1,1,NA,NA,NA,NA)))
+
+
+grid.arrange(sm, tableGrob(transposeM,
+                       rows = rownames(transposeM),
+                       theme = ttheme_minimal(base_size = 6)) %>% 
+                gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+                gtable_add_grob(list(textGrob("Proportions by Marital Status", gp = gpar(fontsize = 12))), 
+                                t = 1, l = 1, r = ncol(transposeM)),
+             layout_matrix=lay)
+
+dbClearResult(res10)
+
+```
+
+Figure 11 shows the distribution of method of suicide depending on the marital status of the person at their time of death. People who were married or widowed at time of death are more likely to commit suicide by firearm, while people who were never married are more likely to kill themselves by asphyxiation or jumping from a height. People who were divorced or widowed are also more likely to have committed suicide via drugs compared to those who were single or married.
+
+## Race
+
+```{r fig.height = 3.2}
+mortality_data$race_new <- as.character(mortality_data$race_recode_5)
+mortality_data$race_new <- factor(ifelse(mortality_data$hispanic_origin < 200, mortality_data$race_new, "Hispanic"))
+prace <- ggplot(mortality_data, aes(x=short_358)) + geom_bar(aes(fill = short_358)) + facet_wrap(~race_new, scales = "free_y") +
+    labs(title="Figure 12: Method of Suicide by Race", y="Number of Suicides", x="Manner of Death") + theme1 +
+    theme(axis.text.x = element_text(angle = 25, hjust = 1)) +
+  scale_fill_manual(values = cbPalette) +
+  guides(fill = FALSE)
+
+res8 <- dbSendQuery(conn = dcon_suicide, "
+                   SELECT race_new, short_358, count(*)
+                    FROM mortality_data
+                    GROUP BY race_new, short_358 ;
+                    ")
+
+data8=fetch(res8)
+
+data8 <- reshape(data8, v.names = "count(*)", idvar = "race_new", timevar = "short_358", direction = "wide")
+data8[, -1] <- t(apply(data8[, -1], 1, function(x) return(round(x / sum(x), 4))))
+colnames(data8) <- c("Race", sort(levels(mortality_data$short_358)))
+data8$Race <- c("American Indian", "Asian", "Black", "Hispanic", "White")
+rownames(data8) <- NULL
+prace
+```
+
+```{r fig.height = 1.7, fig.width = 8}
+grid.arrange(tableGrob(data8,
+                       rows = NULL,
+                       theme = ttheme_minimal(base_size = 10)) %>% 
+                gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+                gtable_add_grob(list(textGrob("Proportion of Methods by Race", gp = gpar(fontsize = 13))), 
+                                t = 1, l = 1, r = ncol(data8)))
+```
+
+Figure 12 shows the distribution of suicide methods depending on the race of the deceased. The popularity of methods depends greatly on race. White and black people are much more likely to use firearms to commit suicide compared to the other methods, while American Indians, Asians, and Hispanics are more likely to kill themselves by asphyxiation as opposed to using firearms. Asians are also much more likely to kill themselves by jumping from heights compared to other races.
+
+## Education Level
+```{r fig.width=8, fig.height=3.9}
+# mortality_data<-read.csv("mortality_data.csv")
+mosaic <- function(x, y, data, xlab = "", ylab = "", main = "") {
+  require(latex2exp)
+  require(grid)
+  require(gridBase)    
+  grid.newpage()
+  mat_mosaic <- table(data[[y]], data[[x]])
+  mat_res <- chisq.test(mat_mosaic)$residuals
+  mosaic_cols <- rev(c("#0000ff", "#7777ff", "white", 
+                   "#ff7777", "#ff0000"))
+  mat_cols <- matrix(mosaic_cols[pmin(pmax(trunc(mat_res / 2), -2), 2) + 3],
+                     ncol = ncol(mat_mosaic))
+  nmeasures <- length(unique(data[[x]]))
+  nbars <- length(unique(data[[y]]))
+  nmeasures <- nrow(mat_mosaic)
+  nbars <- ncol(mat_mosaic)
+  bar_widths <- colSums(mat_mosaic) / sum(mat_mosaic)
+  bar_totals <- rbind(rep(0, nbars),
+                     apply(mat_mosaic, 2, cumsum))
+  bar_totals2 <- bar_totals
+  for(ii in 1:ncol(bar_totals)){
+    bar_totals2[, ii] <- bar_totals[, ii] / bar_totals[nrow(bar_totals), ii]
+  }
+  bar_totals3 <- bar_totals2[, 1] - c(0, 0, 0, 0.05, 0, 0.05, 0)
+  pushViewport(plotViewport(c(3.6, 5.6, 1.6, 6.6),
+                            yscale = c(0, 1),
+                            xscale = c(0, 1),
+                            layout = grid.layout(1, nbars,
+                                                 widths = unit(bar_widths, "native"))))
+  grid.rect()
+  for(jj in 1:nmeasures){
+    grid.text(rownames(mat_mosaic)[jj], x = -0.02,
+              y = (bar_totals3[jj + 1] - bar_totals3[jj]) / 2 + 
+                bar_totals3[jj],
+              rot = 20,
+              hjust = 1,
+              vjust = 0.25,
+              gp = gpar(fontsize = 8))
+  }
+  grid.text("Pearson \nResiduals", 
+            x = 1.12,
+            y = 0.73,
+            just = "center",
+            gp = gpar(fontsize = 12))
+  grid.rect(x = 1.05,
+            y = 0.63,
+            width = 0.03,
+            height = 0.03,
+            gp = gpar(fill = "#0000ff"))
+  grid.text(TeX("$r \\geq 4$"), 
+            x = 1.08,
+            y = 0.63,
+            just = "left",
+            gp = gpar(fontsize = 10))
+  grid.rect(x = 1.05,
+            y = 0.58,
+            width = 0.03,
+            height = 0.03,
+            gp = gpar(fill = "#7777ff"))
+  grid.text(TeX("$2 \\leq r \\leq 4$"), 
+            x = 1.08,
+            y = 0.58,
+            just = "left",
+            gp = gpar(fontsize = 10))
+  grid.rect(x = 1.05,
+            y = 0.53,
+            width = 0.03,
+            height = 0.03,
+            gp = gpar(fill = "white"))
+  grid.text(TeX("$-2 \\leq r \\leq 2$"), 
+            x = 1.08,
+            y = 0.53,
+            just = "left",
+            gp = gpar(fontsize = 10))
+  grid.rect(x = 1.05,
+            y = 0.48,
+            width = 0.03,
+            height = 0.03,
+            gp = gpar(fill = "#ff7777"))
+  grid.text(TeX("$-4 \\leq r \\leq -2$"), 
+            x = 1.08,
+            y = 0.48,
+            just = "left",
+            gp = gpar(fontsize = 10))
+  grid.rect(x = 1.05,
+            y = 0.43,
+            width = 0.03,
+            height = 0.03,
+            gp = gpar(fill = "#ff0000"))
+  grid.text(TeX("$r \\leq -4$"), 
+            x = 1.08,
+            y = 0.43,
+            just = "left",
+            gp = gpar(fontsize = 10))
+  for (ii in 1:nbars) {
+    pushViewport(viewport(layout.pos.col = ii,
+                          yscale = c(0, 1)))
+    grid.rect(x = rep(0.5, nmeasures),
+              y = unit(bar_totals2[1:nmeasures, ii], "native"),
+              height = unit(diff(bar_totals2[, ii]), "native"),
+              width = 1, just = "bottom",
+              gp = gpar(fill = mat_cols[, ii]))
+    grid.text(colnames(mat_mosaic)[ii], y = unit(-0.4, "lines"),
+              rot = 75,
+              just = "right",
+              gp = gpar(fontsize = 8))
+    popViewport()
+  }
+  grid.text(xlab, 
+            x = 0.5,
+            y = -0.2)
+  grid.text(ylab, 
+            y = 0.5,
+            x = -0.18,
+            rot = 90)
+  grid.text(main, 
+            x = 0.5,
+            y = 1.07,
+            gp = gpar(fontsize = 14,
+                      fontface = "bold"))
+  popViewport()
+}
+
+
+## Calling the function
+mosaic("education_2003_revision","short_358", mortality_data, 
+       xlab = "Education", ylab = "Method", 
+       main = "Figure 13: Suicide Method vs. Education Level")
+```
+
+We use a mosaic plot in Figure 13 to determine whether the education level and method of suicide chosen are independent variables. The plot shows the proportion of overall suicides by education level on the x-axis and the proportions of suicide methods used, conditional on each education level, on the y-axis. The boxes of the mosaic plot are colored based on the Pearson residual for the chi-square test for independence. The large magnitudes of the chi-square residuals seen in the plot indicate dependence between education level and method of suicide chosen. In general, we see that people who have attended or graduated from college are significantly more likely to commit suicide by jumping, drugs, poisoning, or miscellaneous methods. On the other hand, those who have not graduated high school prefer asphyxiation more than the general population. High school graduates who have not attended college favor using firearms more than other groups.
+
+
+
+## Place
+
+```{r fig.width = 8, fig.height = 3.9}
+levels(mortality_data$place_of_death_and_decedents_status) <- c("Home", "Hospice", "Hospital", 
+                                                                "Nursing Home", "Other", "Unknown")
+ggplot(mortality_data, aes(x=place_of_death_and_decedents_status, fill = short_358)) + geom_bar() +
+  facet_wrap(~short_358, scales = "free_y", ncol = 4) +
+  theme1 +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    labs(title="Figure 14: Location of Death by Method", y="Number of Suicides", x="Location of Death") +
+  scale_fill_manual(values = cbPalette) +
+  guides(fill = FALSE)
+
+res5 <- dbSendQuery(conn = dcon_suicide, "
+                   SELECT short_358, place_of_death_and_decedents_status,  count(*)
+                    FROM mortality_data
+                    GROUP BY short_358,place_of_death_and_decedents_status;
+                    ")
+
+data5=fetch(res5)
+
+data5 <- reshape(data5, v.names = "count(*)", timevar = "short_358", idvar = "place_of_death_and_decedents_status", direction = "wide")
+data5[, -1] <- t(apply(data5[, -1], 1, function(x) return(round(x / sum(x), 4))))
+colnames(data5) <- c("Location", sort(levels(mortality_data$short_358)))
+data5$Location <- c("Home", "Hospice", "Hospital", "Nursing", "Other", "Unknown")
+rownames(data5) <- NULL
+```
+
+```{r fig.width = 8, fig.height = 2}
+grid.arrange(tableGrob(data5,
+                       rows = NULL,
+                       theme = ttheme_minimal(base_size = 10)) %>% 
+                gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+                gtable_add_grob(list(textGrob("Proportion of Methods by Place", gp = gpar(fontsize = 13))), 
+                                t = 1, l = 1, r = ncol(data5)))
+dbClearResult(res5)
+```
+
+Figure 14 shows the distribution of location of death based on the method of suicide chosen. Suicides by firearm, asphyxiation, drugs, and poisoning are much more likely to occur at the home, while suicides by jumping from heights or miscellaneous methods are more likely to occur in other places. Solid and liquid poisoning deaths are also much more likely to occur at a hospital or medical clinic compared to other methods.
+
+## Time
+
+```{r}
+mortality_data$month_of_death <- fct_relevel(mortality_data$month_of_death, 
+                                      c("January", "February", "March", "April", 
+                                        "May", "June", "July", "August", "September", 
+                                        "October", "November", "December"))
+pm <- ggplot(data = mortality_data) +
+  geom_bar(aes(x = short_358, fill = short_358)) +
+  facet_wrap(~ month_of_death, scales = "free_y", ncol = 4)+
+  theme1 +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1)) +
+  labs(x = "Method", y = "Number of Suicides",
+       title = "Figure 15: Suicides Methods by Month") +
+  scale_fill_manual(values = cbPalette) +
+  guides(fill = FALSE)
+```
+
+```{r}
+mortality_data$day_of_week_of_death <- fct_relevel(mortality_data$day_of_week_of_death, 
+                                      c("Sunday", "Monday", "Tuesday", "Wednesday",
+                                        "Thursday", "Friday", "Saturday"))
+pt <- ggplot(data = mortality_data) +
+  geom_bar(aes(x = short_358, fill = short_358)) +
+  facet_wrap(~ day_of_week_of_death, ncol = 4)+
+  theme1 +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1)) +
+  labs(x = "Day of Week", y = "Number of Suicides",
+       title = "Figure 16: Methods by Day of Week") +
+  scale_fill_manual(values = cbPalette) +
+  guides(fill = FALSE)
+
+
+pm
+
+res3 <- dbSendQuery(conn = dcon_suicide, "
+                   SELECT month_of_death, short_358, count(*)
+                    FROM mortality_data
+                    GROUP BY month_of_death,short_358;
+                    ")
+
+data3=fetch(res3)
+dbClearResult(res3)
+
+data3 <- reshape(data3, v.names = "count(*)", timevar = "short_358", idvar = "month_of_death", direction = "wide")
+data3[, -1] <- t(apply(data3[, -1], 1, function(x) return(round(x / sum(x), 4))))
+colnames(data3) <- c("Month", sort(levels(mortality_data$short_358)))
+rownames(data3) <- NULL
+data3 <- data3[c(5, 4, 8, 1, 9, 7, 6, 2, 12, 11, 10, 3), ]
+rownames(data3) <- NULL
+```
+
+```{r fig.width = 8, fig.height = 4}
+grid.arrange(tableGrob(data3,
+                       rows = NULL,
+                       theme = ttheme_minimal(base_size = 10)) %>% 
+                gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+                gtable_add_grob(list(textGrob("Proportion of Methods by Month", gp = gpar(fontsize = 13))), 
+                                t = 1, l = 1, r = ncol(data3)))
+
+```
+
+```{r}
+pt
+
+res4 <- dbSendQuery(conn = dcon_suicide, "
+                   SELECT day_of_week_of_death, short_358, count(*)
+                    FROM mortality_data
+                    GROUP BY day_of_week_of_death, short_358;
+                    ")
+
+data4=fetch(res4)
+
+data4 <- reshape(data4, v.names = "count(*)", timevar = "short_358", idvar = "day_of_week_of_death", direction = "wide")
+data4[, -1] <- t(apply(data4[, -1], 1, function(x) return(round(x / sum(x), 4))))
+colnames(data4) <- c("Day", sort(levels(mortality_data$short_358)))
+rownames(data4) <- NULL
+data4 <- data4[c(4, 2, 6, 8, 5, 1, 3, 4), ]
+rownames(data4) <- NULL
+
+dbClearResult(res4)
+```
+
+```{r fig.width = 8, fig.height = 3}
+grid.arrange(tableGrob(data4,
+                       rows = NULL,
+                       theme = ttheme_minimal(base_size = 10)) %>% 
+                gtable_add_rows(heights = unit(1,"line"), pos = 0) %>%
+                gtable_add_grob(list(textGrob("Proportion of Methods by Day of Week", gp = gpar(fontsize = 13))), 
+                                t = 1, l = 1, r = ncol(data4)))
+```
+
+Figures 15 and 16 show the distribution of method of suicide by day of week and month of year. From these graphs, there does not seem to be a significant difference in suicide methods based on time of occurrence.
+
+#Significant Variables
+## Multinomial Model
+We fit a multinomial model with the suicide method as the response and the demographic variables race, education, resident status, age, and marital status as the predictors. The model estimates the relative probablility of a person choosing a particular suicide method versus a baseline category, in this case firearms, and how this changes depending on the value of the predictors. Figure 17 displays the standardized coefficients of the model. Levels of the response variable are shown on the y-axis and levels of the predictor variables are shown on the x-axis. The colors of the boxes correspond to the t-value of the regression coefficient estimate for a predictor/response pairing, and stastically significant coefficients are denoted with a slash in their respective box. 
+For the model's categorical variables, we choose white, residents, males, high school graduates, married, and home as the baseline categories for the race, resident status, gender, education, marital status, and place of death variables, respectively. The majority of the coefficients in the model were statistically significant at the 0.05 level, meaning that there are statistically significant differences in the suicide method chosen between different demographic groups. The standardized coefficients from the model match what we would expect to see based on the graphs of the bivariate relationships between each predictor and suicide method seen prior.
+```{r fig.width=8, fig.height=4, cache = FALSE}
+# mortality_data<-read.csv("mortality_data.csv", header=TRUE)
+reg_data <- mortality_data
+reg_data$short_358 <- fct_relevel(reg_data$short_358, "Firearms")
+reg_data$race_new <- fct_relevel(reg_data$race_new, "White")
+reg_data$resident_status <- fct_relevel(reg_data$resident_status, "RESIDENTS")
+reg_data$sex <- fct_relevel(reg_data$sex, "Male")
+reg_data$education_2003_revision <- fct_relevel(reg_data$education_2003_revision, "HS Grad")
+reg_data$marital_status <- fct_relevel(reg_data$marital_status, "Married")
+reg_data$place_of_death_and_decedents_status <- fct_relevel(reg_data$place_of_death_and_decedents_status, "Decedent's home")
+```
+
+```{r results = 'hide', cache = TRUE}
+model1 <- multinom(short_358 ~ race_new + sex + education_2003_revision +
+                     resident_status + detail_age + marital_status ,
+                   data = reg_data, maxit = 200)
+```
+
+```{r fig.width=8, fig.height=3.5, cache = TRUE}
+sum1 <- summary(model1)
+std_model1 <- sum1$coefficients / sum1$standard.errors
+```
+
+```{r fig.width=8, fig.height=4}
+some_kind_of_plot <- function(multinom_summary, vert = FALSE, 
+                              xlab = "", ylab = "", 
+                              main = "Standardized Multinomial Regression Coefficients",
+                              alpha = 0.05,
+                              pred_names = NULL) {
+    require(latex2exp)
+    require(grid)
+    require(gridBase)
+    std_coefs <- multinom_summary$coefficients / multinom_summary$standard.errors
+    if(!(is.null(pred_names))){
+      colnames(std_coefs) <- pred_names
+    }
+    if(vert) {
+        std_coefs <- t(std_coefs)
+    }
+    
+    grid.newpage()
+    nmeasures <- nrow(std_coefs)
+    nbars <- ncol(std_coefs)
+    bar_widths <- 1/nbars
+    bar_heights <- (0:(nmeasures - 1)) / nmeasures
+    bar_CP <- colorRampPalette(c("#7303c0", "white", "#fc4a1a"))(1001)
+    bar_cols <- matrix(bar_CP[round(pmax(pmin(std_model1, 5), -5) * 100 + 501)], 
+                       ncol = nbars, byrow = FALSE)
+    crit_val <- (qt(1 - alpha, nrow(sum1$fitted.values) - nbars * nmeasures))
+    bar_outs <- matrix(ifelse(std_model1 > crit_val | std_model1 < -crit_val, "black", bar_cols), 
+                       ncol = nbars, byrow = FALSE)
+    pushViewport(plotViewport(c(5.1, 7.3, 1.6, 6.6),
+                              yscale = c(0, 1),
+                              xscale = c(0, 1),
+                              layout = grid.layout(1, nbars,
+                                                   widths = unit(bar_widths, "native"))))
+    grid.rect()
+    for(jj in 1:nmeasures){
+        grid.text(rownames(std_coefs)[jj], x = -0.01,
+                  y = (c(bar_heights, 1)[jj + 1] - bar_heights[jj]) / 2 + 
+                      bar_heights[jj],
+                  rot = 20,
+                  hjust = 1,
+                  vjust = 0.25,
+                  gp = gpar(fontsize = 8))
+    }
+    grid.text("Standardized \nValues", 
+              x = 1.12,
+              y = 0.83,
+              just = "center",
+              gp = gpar(fontsize = 12))
+    grid.rect(x = rep(1.06, 1001),
+              y = unit(0.5 / 1001 * (1:1001) + 0.15, "native"),
+              width = 0.04,
+              height = 0.45 / 1001,
+              gp = gpar(fill = bar_CP,
+                        col = bar_CP),
+              just = "bottom")
+    grid.text("5", 
+              x = 1.1,
+              y = 0.64,
+              just = "left",
+              gp = gpar(fontsize = 10))
+    grid.text("2.5", 
+              x = 1.1,
+              y = 0.5175,
+              just = "left",
+              gp = gpar(fontsize = 10))
+    grid.text("0", 
+              x = 1.1,
+              y = 0.395,
+              just = "left",
+              gp = gpar(fontsize = 10))
+    grid.text("-2.5", 
+              x = 1.1,
+              y = 0.2775,
+              just = "left",
+              gp = gpar(fontsize = 10))
+    grid.text("-5", 
+              x = 1.1,
+              y = 0.16,
+              just = "left",
+              gp = gpar(fontsize = 10))
+    for (ii in 1:nbars) {
+        pushViewport(viewport(layout.pos.col = ii,
+                              yscale = c(0, 1)))
+        grid.rect(x = rep(0.5, nmeasures),
+                  y = unit(bar_heights[1:nmeasures], "native"),
+                  height = unit(diff(bar_heights), "native"),
+                  width = 1, just = "bottom",
+                  gp = gpar(fill = bar_cols[, ii],
+                            col = "white"))
+        grid.polyline(x = matrix(c(0, 1), ncol = nmeasures, nrow = 2),
+                      y = unit(matrix(c(c(bar_heights), c(bar_heights[-1], 1)), ncol = nmeasures, nrow = 2,
+                                      byrow = TRUE), "native"),
+                      id.lengths = rep(2, nmeasures),
+                      gp = gpar(col = bar_outs[, ii]))
+        grid.text(colnames(std_coefs)[ii], y = unit(-0.3, "lines"),
+                  rot = 70,
+                  just = "right",
+                  gp = gpar(fontsize = 8))
+        popViewport()
+    }
+    grid.text(xlab, 
+              x = 0.5,
+              y = -0.31)
+    grid.text(ylab, 
+              y = 0.5,
+              x = -0.24,
+              rot = 90)
+    grid.text(main, 
+              x = 0.5,
+              y = 1.08,
+              gp = gpar(fontsize = 14,
+                        fontface = "bold"))
+}
+some_kind_of_plot(sum1, vert = FALSE, ylab = "Responses", xlab = "Predictors",
+                  main = "Figure 17: Standardized Multinomial Regression Coefficients",
+                  pred_names = c("Intercept", "American Indian", "Asian",
+                                 "Black", "Hispanic", "Female", "< 8th Grade",
+                                 "9th-12th", "Some College", "Associate",
+                                 "Bachelor's", "Master's", "Doctorate",
+                                 "Unknown", "Foreign Res.", "Inter. Nonres.",
+                                 "Intra. Nonres.", "Age", "Divorced",
+                                 "Unknown", "Single", "Widowed"))
+```
+
+
+# Conclusion
+The ultimate goal of this analysis was to explore and identify important relationships between variables that might influence an individual to commit suicide and the method they would choose. Suicides are more likely to occur early in the week, where a week begins with Monday, and decrease in occurrence as the week progresses. In contrast, the proportion of overall deaths tends to increase throughout the week. Additionally, suicide rates are higher in the summer and fall, while overall death rates are higher in the spring and winter. 
+
+Comparing the proportion of suicides vs all deaths, we found that the proportion of suicide is higher in young individuals, while older individuals have a higher proportion of overall deaths. The relationship between an individual's education level and likelihood of suicide isn't progressive, indicating that education might interact with other variables. Males and females are roughly equally represented in overall deaths, but males make up the majority of suicides. 
+
+
+When considering marital status, the most notable findings were that individuals who are widowed have a larger proportion of deaths overall than they do suicides. In addition, the largest proportion of suicides occur in individuals never married and single. Race and resident status vary in considering the discrepancy between death rate and suicide rate. 
+
+Suicide methods were found to have noticeable relationships with demographics, but not with time. Firearms are the preferred method of suicide with asphyxiation and drug poisoning being popular methods, as well. The model indicates most levels of all predictors are significant, but this might be influenced by the fact that firearms are the most popular method. Visual inspection indicates age, race, and gender have significant relationships with the method chosen, while martial status and education have minor relationships with the method. The location of death varies between the different suicide methods, but the time does not appear to have any relationship with method chosen.
+
+
+# References
+[1] Curtin SC, Warner M, Hedegaard H. Increase in suicide in the United States, 1999-2014. NCHS data brief, no 241. Hyattsville, MD: National Center for Health Statistics. 2016.
+
+[2] Center for Disease Control. (2005-2015). Death in the United States. [Data file]. Retrieved from https://www.kaggle.com/cdc/mortality.
+
+\newpage
+#Appendix
+##Resident Status
+```{r, fig.height = 3.2}
+rs_df<-cbind(resident_status_df, "Prop" = resident_status_df[,2]/sum(resident_status_df[,2]))
+s_rs<-mortality_data%>%
+    count(resident_status)%>%
+    modify_if(is.character, factor)%>%
+    mutate(Prop = n/sum(n))%>%
+    rename(Count=n, Level=resident_status)
+so_rs<-bind_rows("Suicide"=s_rs, "Overall"=rs_df, .id='group')
+ggplot(data=so_rs, aes(fill=group, x=Level, y=Prop)) + geom_bar(stat="identity",position="dodge") + theme1 +
+    theme(axis.text.x = element_text(angle = 15, hjust = 1)) + labs(x="Resident status", y="Proportion", fill="Death Type",
+                                                                    title = "Distribution by Resident Status") +
+  scale_fill_manual(values = deathPalette) +
+    theme(axis.text.x = element_text(angle = 25, hjust = 1))
+```
+The graph shown above plots the residential status vs the proportion of deaths overall and the deaths by suicide. Most individuals are residents, with 79% of the suicides being residents compared to 76% of overall deaths. The proportion of overall deaths in the ``intrastate no residents'' category is higher than the proportion of suicides. 
+Residents make up the most deaths and suicides in comparison to interstate nonresidents, intrastate nonresidents, and foreign residents. 

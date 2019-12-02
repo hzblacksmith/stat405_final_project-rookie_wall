@@ -14,7 +14,7 @@ library(dplyr)
 ```
 
 ```{r, echo=TRUE}
-df <- read.csv("data/AllRookieDataGroupedEdited.csv")
+df <- read.csv("data/AllRookieData3.0.csv")
 ```
 
 ```{r, echo=TRUE}
@@ -26,7 +26,7 @@ df$intl_group[df$intl_minutes >= 3279 & df$intl_minutes <= 13659] = 4
 ```
 
 ```{r, echo=TRUE}
-df %>% mutate(pre_nba_group = case_when(
+df <- df %>% mutate(pre_nba_group = case_when(
         cbb_group == 1 & is.na(intl_group) ~ 1,
         cbb_group == 2 & is.na(intl_group) ~ 2, 
         cbb_group == 3 & is.na(intl_group) ~ 3,
@@ -40,10 +40,21 @@ df %>% mutate(pre_nba_group = case_when(
 ```
 
 ```{r, echo=TRUE}
-tab %>%
-  group_by(cbb_group, variable) %>%
-  summarise(a_sum=sum(amount),
-            a_mean=(mean(amount)))
+df %>% mutate(pre_nba_group = case_when(
+        Month == 10 & MonthBin == 1 ~ 1,
+        Month == 10 & MonthBin == 2 ~ 2, 
+        Month == 10 & MonthBin == 3 ~ 3,
+        cbb_group == 4 & is.na(intl_group) ~ 4,
+        is.na(cbb_group) & intl_group == 1 ~ 5,
+        is.na(cbb_group) & intl_group == 2 ~ 6,
+        is.na(cbb_group) & intl_group == 3 ~ 7,
+        is.na(cbb_group) & intl_group == 4 ~ 8,
+        is.na(cbb_group) & is.na(cbb_group) ~ 9,
+        !is.na(cbb_group) & !is.na(cbb_group) ~ 10)) 
+```
+
+```{r, echo=TRUE}
+  summarise(group_by(df, pre_nba_group, Month, MonthBin), mean_gs=mean(game_score), size = n())
 ```
 
 ```{r, echo=TRUE}

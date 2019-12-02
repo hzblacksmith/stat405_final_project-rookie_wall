@@ -1,10 +1,9 @@
 # STAT 405 Final Project: Rookie Wall
 
-### Missing Players
 *TODO*:
-1. filter out their box scores to only keep their rookie year performance
-2. add up their intl experience
-3. add to the grand dataset (...INTL)
+1. Add draft position to grand dataset (...Edited)
+2. 6-8 plots
+3. Killer plot
 
 ### College stats
 *TODO*:
@@ -14,8 +13,3 @@
 ### intl_scrape.rmd
 Used to scrape internaional experience.
 
-*TODO*: 
-1. Figure out how to scrape the year column
-2. Find out the last year they played before going to the NBA
-3. Add up pre-NBA intl. games and minutes
-4. Add columns to main database

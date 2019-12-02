@@ -1,0 +1,79 @@
+---
+title: "Killer Plot"
+author: "Group 8"
+date: "12/1/2019"
+output: pdf_document
+---
+
+```{r, echo=TRUE}
+library(ggplot2)
+library(plyr)
+library(scales)
+library(zoo)
+library(dplyr)
+```
+
+```{r, echo=TRUE}
+df <- read.csv("data/AllRookieDataGroupedEdited.csv")
+```
+
+```{r, echo=TRUE}
+# according to quantile
+df$intl_group[df$intl_minutes >= 2 & df$intl_minutes < 682] = 1
+df$intl_group[df$intl_minutes >= 682 & df$intl_minutes < 1249] = 2
+df$intl_group[df$intl_minutes >= 1249 & df$intl_minutes < 3279] = 3
+df$intl_group[df$intl_minutes >= 3279 & df$intl_minutes <= 13659] = 4
+```
+
+```{r, echo=TRUE}
+df %>% mutate(pre_nba_group = case_when(
+        cbb_group == 1 & is.na(intl_group) ~ 1,
+        cbb_group == 2 & is.na(intl_group) ~ 2, 
+        cbb_group == 3 & is.na(intl_group) ~ 3,
+        cbb_group == 4 & is.na(intl_group) ~ 4,
+        is.na(cbb_group) & intl_group == 1 ~ 5,
+        is.na(cbb_group) & intl_group == 2 ~ 6,
+        is.na(cbb_group) & intl_group == 3 ~ 7,
+        is.na(cbb_group) & intl_group == 4 ~ 8,
+        is.na(cbb_group) & is.na(cbb_group) ~ 9,
+        !is.na(cbb_group) & !is.na(cbb_group) ~ 10))
+```
+
+```{r, echo=TRUE}
+tab %>%
+  group_by(cbb_group, variable) %>%
+  summarise(a_sum=sum(amount),
+            a_mean=(mean(amount)))
+```
+
+```{r, echo=TRUE}
+df$date <- as.Date(df$date)  # format date
+df <- df[df$year >= 2012, ]  # filter reqd years
+
+# Create Month Week
+df$yearmonth <- as.yearmon(df$date)
+df$yearmonthf <- factor(df$yearmonth)
+df <- ddply(df,.(yearmonthf), transform, monthweek=1+week-min(week))  # compute week number of month
+df <- df[, c("year", "yearmonthf", "monthf", "week", "monthweek", "weekdayf", "VIX.Close")]
+head(df)
+#>   year yearmonthf monthf week monthweek weekdayf VIX.Close
+#> 1 2012   Jan 2012    Jan    1         1      Tue     22.97
+#> 2 2012   Jan 2012    Jan    1         1      Wed     22.22
+#> 3 2012   Jan 2012    Jan    1         1      Thu     21.48
+#> 4 2012   Jan 2012    Jan    1         1      Fri     20.63
+#> 5 2012   Jan 2012    Jan    2         2      Mon     21.07
+#> 6 2012   Jan 2012    Jan    2         2      Tue     20.69
+
+
+# Plot
+ggplot(df, aes(monthweek, weekdayf, fill = VIX.Close)) + 
+  geom_tile(colour = "white") + 
+  facet_grid(year~monthf) + 
+  scale_fill_gradient(low="red", high="green") +
+  labs(x="Week of Month",
+       y="",
+       title = "Time-Series Calendar Heatmap", 
+       subtitle="Yahoo Closing Price", 
+       fill="Close")
+```
+

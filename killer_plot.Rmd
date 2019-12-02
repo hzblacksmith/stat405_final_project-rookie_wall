@@ -14,7 +14,7 @@ library(dplyr)
 ```
 
 ```{r, echo=TRUE}
-df <- read.csv("data/AllRookieData3.0.csv")
+df <- read.csv("data/AllRookieDataWithDraftPos.csv")
 ```
 
 ```{r, echo=TRUE}
@@ -35,8 +35,9 @@ df <- df %>% mutate(pre_nba_group = case_when(
         is.na(cbb_group) & intl_group == 2 ~ 6,
         is.na(cbb_group) & intl_group == 3 ~ 7,
         is.na(cbb_group) & intl_group == 4 ~ 8,
-        is.na(cbb_group) & is.na(cbb_group) ~ 9,
-        !is.na(cbb_group) & !is.na(cbb_group) ~ 10))
+        is.na(cbb_group) & is.na(intl_group) ~ 9,
+        !is.na(cbb_group) & !is.na(intl_group) ~ 10))
+write.csv(df, "data/AllRookieDataWithDraftPos.csv")
 ```
 
 ```{r, echo=TRUE}
@@ -54,7 +55,20 @@ df %>% mutate(pre_nba_group = case_when(
 ```
 
 ```{r, echo=TRUE}
-  summarise(group_by(df, pre_nba_group, Month, MonthBin), mean_gs=mean(game_score), size = n())
+plot_df <- summarise(group_by(df, pre_nba_group, Month, MonthBin), mean_gs=mean(game_score), size = n())
+write.csv(plot_df, "data/grouped_mean_gs.csv")
+```
+
+```{r, echo=TRUE}
+ggplot(plot_df, aes(MonthBin, size, fill = mean_gs)) + 
+  geom_tile(colour = "white") + 
+  facet_grid(pre_nba_group~Month) + 
+  scale_fill_gradient(low="blue", high="red") +
+  labs(x="Week of Month",
+       y="",
+       title = "Time-Series Calendar Heatmap", 
+       subtitle="Yahoo Closing Price", 
+       fill="Close")
 ```
 
 ```{r, echo=TRUE}

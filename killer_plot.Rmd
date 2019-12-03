@@ -5,16 +5,17 @@ date: "12/1/2019"
 output: pdf_document
 ---
 
-```{r, echo=TRUE}
+```{r, echo=TRUE, message=FALSE}
 library(ggplot2)
 library(plyr)
 library(scales)
 library(zoo)
+library(plotly)
 library(dplyr)
 ```
 
 ```{r, echo=TRUE}
-df <- read.csv("data/AllRookieDataWithDraftPos.csv")
+df <- read.csv("data/AllRookieData6.0.csv")
 ```
 
 ```{r, echo=TRUE}
@@ -55,20 +56,26 @@ df %>% mutate(pre_nba_group = case_when(
 ```
 
 ```{r, echo=TRUE}
-plot_df <- summarise(group_by(df, pre_nba_group, Month, MonthBin), mean_gs=mean(game_score), size = n())
-write.csv(plot_df, "data/grouped_mean_gs.csv")
+plot_df <- read.csv("data/GroupedMeanGSRS3.0.csv")
+plot_df
 ```
 
 ```{r, echo=TRUE}
-ggplot(plot_df, aes(MonthBin, size, fill = mean_gs)) + 
-  geom_tile(colour = "white") + 
-  facet_grid(pre_nba_group~Month) + 
-  scale_fill_gradient(low="blue", high="red") +
-  labs(x="Week of Month",
-       y="",
-       title = "Time-Series Calendar Heatmap", 
-       subtitle="Yahoo Closing Price", 
-       fill="Close")
+quantile(df$game_score, 0.05)
+```
+```{r, echo=TRUE}
+plot_df <- plot_df %>%
+  mutate(text = paste0("Month: ", MonthStr, "\n", "Pre-NBA Group: ", pre_nba_group_str, "\n", "Size: ", size, "\n", "Game Score: ", round(mean_gs, 2), "\n", "What else?"))
+kp <- ggplot(plot_df, aes(MonthBin, round, fill = mean_gs)) + 
+  geom_tile(colour = "white") +
+  scale_fill_gradient(low="green", high="red") + 
+  facet_grid(pre_nba_group~MonthStr) + scale_y_continuous(trans="reverse") + 
+  labs(x="10-day Period of Month",
+       y="Group of Rookies",
+       title = "Game Score Heatmap (5th %ile - 95th %ile)", 
+       subtitle= "Performance change every 10 days", 
+       fill="Game Score")
+ggplotly(kp, tooltip = "text")
 ```
 
 ```{r, echo=TRUE}

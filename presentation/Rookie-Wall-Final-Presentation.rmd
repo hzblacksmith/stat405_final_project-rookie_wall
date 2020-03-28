@@ -1,0 +1,452 @@
+---
+title: "The NBA Rookie Wall--Does it Really Exist?"
+author: "Frank Li, Jason Gardner, David Dai, Xinyang Zhu"
+date: "December 6, 2019"
+output: pdf_document
+fontsize: 10pt
+geometry: margin=1in
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(ggpubr)
+library(grid)
+library(gridBase)
+```
+
+
+## Introduction
+
+Inspired by persistent NBA discussion, and recently articles by LibertyBallers.com (1), FoxSports.com (2), and TheAthletic.com (3), this paper is designed to analyze to what extent a rookie "wall" exists in the National Basketball Association, and if it does, to whom it most affects.  The concept of a rookie wall is that first-year players in the NBA, known as "rookies" oftentimes regress about 60% of the way through the regular season.  The idea is that players coming from high school, college, or other international leagues have only played seasons that are about half of the length of the NBA's (an NCAA college season is approximately 35 games of length 40 minutes, while the NBA's is 82 48-minute games.)  Besides the astronomically large increase in number of games, the NBA's schedule is simply more gruelling.  Practices may start at 6 AM, and teams may make three or four flights a week as they travel and play games all throughout the country.  At first, these rookies may thrive and relish the opportunity for something new, but as does with anybody in most anything, change can bring about struggle, and when the reality that basketball is a true job finally sets in about midway through an NBA season, it's commonly noted that rookies hit a "wall" in their first year progression.  The purpose of this paper is to decide whether confirmation bias exists amongst casual NBA fans and viewers, such that people only notice the true cases and disregard the rest, or rather there is an evident trend throughout the NBA, or different groups within it.
+
+## Data
+
+To conduct this analysis, a dataset provided by the NBA through its annual NBA Hackathon was used, containing approximately 914,000 unique data points of every single NBA player's game-by-game box score (minutes, points, rebounds, assists, steals, blocks, turnovers, field goal makes, field goal attempts, free throw makes, free throw attempts, and fouls) in the regular season and playoffs starting with the 2003-04 season (one which contained high-profile rookies such as LeBron James, Dwyane Wade, Darko Milicic, and Carmelo Anthony.)  The data were segmented by cross-referencing with Basketball-Reference.com (4) such that only players' rookie seasons were considered.  Within that, the data were segmented into four separate subgroups, again referenced from Basketball-Reference.com, each referring to what type of pre-NBA experience a player had coming in to the league.  Figure 1 below shows a waffle chart of the 1318 rookies with their type of experience.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+data <- read.csv('AllRookieData7.0.csv')
+df <- read.csv('AllRookieData7.0.csv')
+
+bin=rep(0,length(data$pre_nba_group))
+for (i in 1:length(bin)){
+  if (data$pre_nba_group[i] <= 4 && data$pre_nba_group[i] >= 1) {
+  bin[i]="College"
+  } else if (data$pre_nba_group[i] >= 5 && data$pre_nba_group[i] <= 8) {
+  bin[i]="International"
+  } else if (data$pre_nba_group[i] == 9) {
+  bin[i]="High School"
+  } else if (data$pre_nba_group[i] == 10) {
+  bin[i]="College and International"
+  }
+}
+data$pre_nba_group_gen = bin
+#head(data)
+
+library(ggplot2)
+library(dplyr)
+library(plyr)
+#count(data$pre_nba_group_gen)
+attach(data)
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+# Waffle chart for 4 groups
+var <- data$pre_nba_group_gen  # the categorical data 
+
+## Prep data (nothing to change here)
+nrows <- 10
+df <- expand.grid(y = 1:nrows, x = 1:nrows)
+categ_table <- round(table(var) * ((nrows*nrows)/(length(var))))
+
+# Use library Waffle
+library(waffle)
+waffle(categ_table, rows=5, colors=c("#c7d4b6", "#969696", "#1879bf", "#009bda"), 
+       title="Rookies Composition",
+       xlab="One square ~ 460 games played")
+```
+*(Figure 1)*
+
+As is evident, the vast majority of rookies were only NCAA college players, with the second most being international players.  Starting with the 2005 season, the NBA increased the age of eligibility for the NBA draft from 18 to 19, so players coming immediately from high school were no longer allowed to enter, hence the very small data set.  Those who played in college and then internationally (the NCAA does not allow the opposite) were also fairly uncommon.
+
+Although these are fairly distinct and segmented groups, it seemed necessary to divide them even further, because not all experience from a certain set is the same.  To do so, the NCAA players were separated into four groups corresponding to how many college seasons they played.  International players were separated similarly, however since there is no standard game length of season length for overseas leagues, they were segmented based on minutes played that roughly correspond to (less than 1 season, 1 season, 2-3 seasons, and greater than 3 seasons).  Below are the ten subgroups with famous players included in the dataset, as well as waffle chart.
+
+* **1** Approximately 1 NCAA Season (Kevin Durant)
+* **2** Approximately 2 NCAA Season (James Harden)
+* **3** Approximately 3 NCAA Season (Stephen Curry)
+* **4** Approximately 4 NCAA Season (Kemba Walker)
+* **5** Approximately <1 International Season (Serge Ibaka)
+* **6** Approximately 1 International Season (Clint Capela)
+* **7** Approximately 2-3 International Seasons (Marc Gasol)
+* **8** Approximately >3 International Seasons (Luka Doncic)
+* **9** Only High School/Low-Level (LeBron James)
+* **10** NCAA AND International (Patrick Beverley)
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+var <- data$pre_nba_group
+bin <- var
+cats <- c('NCAA 1-35 Gms','NCAA 36-70 Gms',
+         'NCAA 71-105 Gms','NCAA 106+ Gms','Intl 1-669 Mins',
+         'Intl 670-1221 Mins','Intl 1222-3328 Mins',
+         'Intl 3329+ Mins','High School','College+Intl')
+for (i in 1:length(bin)) {
+  bin[i] = cats[var[i]]
+}
+var <- bin
+
+## Prep data (nothing to change here)
+nrows <- 10
+df <- expand.grid(y = 1:nrows, x = 1:nrows)
+categ_table <- round(table(var) * ((nrows*nrows)/(length(var))))
+
+waffle(categ_table, rows=5, colors=c("#C0C0C0","#000000","#FF0000","#FFFF00","#00FF00","#008000","#00FFFF","#0000FF","#FF00FF","#800080"), 
+       title="Rookies Composition",
+       xlab="One square ~ 472 ppl")
+```
+*(Figure 2)*
+
+## Measurement
+
+Given the box score data, the only official way to standardize a single metric to compare groups is John Hollinger's Game Score found on NBAStuffer.com (5).  Game Score is a new linear and simplified version of Player Efficiency Rating (PER), often considered the best metric for overal player effectiveness.  It's normalized on an NBA Points Per Game Scale (Negative=Appalling, 0-5=Poor, 5-8=Okay, 8-13=Average, 13-20=Good, 20-30=Great, 30+=Outstanding), and the formula can be found in reference 6.  There was also a lot of variance in minutes played, for example some rookies were given more minutes at the beginning of the year as an opportunity to prove themselves, while others played more minutes later having proven themselves, or when teams were already eliminiated from the playoffs.  For that reason, everything was normalized to 36 MPG.  Below is a box-plot of first year game scores across the ten experience groups.
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+library(ggplot2)
+library(scales)
+library(zoo)
+library(dplyr)
+df <- read.csv("AllRookieData7.0.csv")
+lvl2 = c(10,11,12,1,2,3,4,5,6)
+
+df = subset(df, Game_id < 40000000)
+
+df7 <-
+  df %>%
+  filter(draft_group == 3) %>%
+  group_by(pre_nba_group, Month) %>%
+  dplyr::summarise(size = n(), mean_gs=mean(game_score_per_36))
+df7 = subset(df7, size > 10)
+
+df7$type[df7$pre_nba_group <= 4] = "NCAA"
+df7$type[df7$pre_nba_group > 4 & df7$pre_nba_group < 9] = "INTL"
+df7$type[df7$pre_nba_group == 9] = "HIGH"
+df7$type[df7$pre_nba_group == 10] = "BOTH"
+
+new_df2 = df7[order(df7$pre_nba_group, factor(df7$Month, levels = lvl2)),]
+
+new_df2 = new_df2 %>%
+  mutate(pct_change = (mean_gs/lag(mean_gs) - 1) * 100)
+
+# new_df = read.csv("Desktop/new2.csv")
+df8 = aggregate(new_df2[, 6], list(new_df2$type, new_df2$Month), mean)
+names(df8)[1]<-paste("type")
+names(df8)[2]<-paste("month")
+names(df8)[3]<-paste("mean_pct_change")
+
+df9 = merge(x = new_df2, y = df8, by.x=c("type","Month"), by.y=c("type","month"), all.x = TRUE)
+df9 = df9[order(factor(df9$Month, levels = lvl2)),]
+
+df9 = subset(df9, df9$pre_nba_group < 5 | df9$pre_nba_group == 10)
+
+
+
+df1 <-
+  df %>%
+  group_by(pre_nba_group, Month) %>%
+  dplyr::summarise(size = n(), mean_gs=mean(game_score_per_36))
+# change game_score_per_36 to game_score to get the un-normalized data
+
+# summarise(group_by(df, pre_nba_group, Month), mean_gs=mean(game_score), size = n())
+df1 = subset(df1, size > 10)
+
+df1$type[df1$pre_nba_group <= 4] = "NCAA"
+df1$type[df1$pre_nba_group > 4 & df1$pre_nba_group < 9] = "INTL"
+df1$type[df1$pre_nba_group == 9] = "HIGH"
+df1$type[df1$pre_nba_group == 10] = "BOTH"
+
+
+new_df = df1[order(df1$pre_nba_group, factor(df1$Month, levels = lvl2)),]
+
+new_df = new_df %>%
+  mutate(pct_change = (mean_gs/lag(mean_gs) - 1) * 100)
+
+df10 = aggregate(new_df[, 6], list(new_df$Month), mean)
+names(df10)[1]<-paste("month")
+names(df10)[2]<-paste("mean_pct_change")
+df10 = df10[order(factor(df10$month, levels = lvl2)),]
+
+# one line overall trends
+
+
+# new_df = read.csv("Desktop/new2.csv")
+df2 = aggregate(new_df[, 6], list(new_df$type, new_df$Month), mean)
+df3 = aggregate(new_df[, 4], list(new_df$type, new_df$Month), mean)
+names(df2)[1]<-paste("type")
+names(df2)[2]<-paste("month")
+names(df2)[3]<-paste("mean_pct_change")
+names(df3)[1]<-paste("type")
+names(df3)[2]<-paste("month")
+names(df3)[3]<-paste("mean_game_score")
+
+
+df4 = merge(x = new_df, y = df2, by.x=c("type","Month"), by.y=c("type","month"), all.x = TRUE)
+df4 = merge(x = new_df, y = df3, by.x=c("type","Month"), by.y=c("type","month"), all.x = TRUE)
+df4 = df4[order(factor(df4$Month, levels = lvl2)),]
+
+df5 = subset(df4, type == "NCAA")
+
+df4$college[df4$pre_nba_group == 1 | df4$pre_nba_group == 9] = "T"
+df4$college[!(df4$pre_nba_group == 1 | df4$pre_nba_group == 9)] = "F"
+
+df6 = subset(df4, college == "T")
+
+cols <- c('1'='greenyellow','2'='forestgreen','3'='dodgerblue','4'='darkorchid1','5'='yellow',
+          '6'='orange','7'='darksalmon','8'='firebrick3', '9'="black",'10'='slateblue1')
+
+# regular season normalized percentage change for all 10 groups without dots
+
+
+df6$pre_nba_group[df6$pre_nba_group == 1] = "Col 1-35 Gms"
+df6$pre_nba_group[df6$pre_nba_group == 9] = "High School"
+# high school player vs college freshman
+
+
+
+
+
+df6$pre_nba_group[df6$pre_nba_group == 1] = "Col 1-35 Gms"
+df6$pre_nba_group[df6$pre_nba_group == 9] = "High School"
+
+
+
+```
+
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+data$pre_nba_group_str <- factor(data$pre_nba_group_str, 
+                               levels = c("1 (NCAA)", "2 (NCAA)", "3 (NCAA)", "4 (NCAA)", 
+                                          "5 (INTL)", "6 (INTL)", "7 (INTL)", "8 (INTL)",
+                                          "9 (HS)", "10 (Both)"))
+g <- ggplot(data, aes(pre_nba_group_str, game_score))
+g + geom_boxplot(aes(fill=factor(pre_nba_group_str))) + 
+  theme(axis.text.x = element_text(angle=45, vjust=0.6),
+        legend.position = "none") + 
+  labs(title="Game Score Box Plot", 
+       subtitle="Grouped by Pre-NBA Experience",
+       x="Pre-NBA Group",
+       y="Game Score")
+```
+*(Figure 3)*
+Evidently, younger college players generally possessed consistently higher Game Scores, but to analyze the possibilities of a rookie wall the data were grouped by month.
+
+
+## The Rookie Wall
+
+Below is a first look at the rookie wall, comparing percentage change from the entire data set's average Game Score compared to the month before it.  The NBA regular season lasts from October to April.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+# one line overall trends
+ggplot(data = df10, mapping = aes(x = factor(month, levels = lvl2), y = mean_pct_change, group = 1)) + 
+  geom_point(size=5) + 
+  xlab("Months") +
+  ylab("Percentage") +
+  ggtitle("All NBA Rookies Percent Change in Game Score by Month") +
+  theme(
+    title = element_text(size = 12),
+    axis.text.x = element_text(size = 8)) + geom_hline(aes(yintercept=0),size=1.5) +
+  geom_line(color="dodgerblue",size=2)
+```
+*(Figure 4)*
+
+After strong increases in December and January, the entire data set regresses in February, providing possible evidence that such a wall exists.  Below is a graph of absolute Game Score by month, for the four main subgroups.
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+ggplot(df4, aes(x = factor(Month, levels = lvl2), y = mean_game_score, group = type, color = 'type')) + 
+  geom_point(aes(color = factor(type), size = size)) +
+  xlab("Months") +
+  ylab("Game score") + 
+  ggtitle("Absolute NBA GS by Four Groups") + 
+  theme(
+    title = element_text(size = 12),
+    axis.text.x = element_text(size = 8)) +
+  geom_line(aes(color = factor(type)))
+
+```
+*(Figure 5)*
+
+NCAA and high school players tend to possess the greatest absolute Game Score values, while those who played in college and then went overseas were consistently the worst.  This makes reasonable sense, since players who did not originally have the skill set to play in the NBA went overseas to refine their game and get a second chance.  Below is the same graph separated by ten subgroups, as well as a percent change graph by month of the same groups.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+ggplot(df4, aes(x = factor(Month, levels = lvl2), y = mean_gs, group = pre_nba_group, color = 'pre_nba_group')) + 
+  geom_point(aes(color = factor(pre_nba_group), size=size)) +
+  xlab("Months") +
+  ylab("Game score") + 
+  ggtitle("Absolute NBA GS by Ten Subgroups") + 
+  theme(
+    title = element_text(size = 12),
+    axis.text.x = element_text(size = 8)) +
+  scale_color_manual(
+    values = cols,
+    labels=c(
+      'Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms',
+      'Intl 1-681 Mins','Intl 682-1248 Mins','Intl 1249-3278 Mins','Intl 3279+ Mins',
+      'HS', 'Both experiences')) +
+  geom_line(aes(color = factor(pre_nba_group)))
+```
+*(Figure 6)*
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+ggplot(df4, aes(x = factor(Month, levels = lvl2), y = pct_change, group = pre_nba_group, color = 'pre_nba_group')) + 
+  geom_point(aes(color = factor(pre_nba_group), size = size)) +
+  xlab("Months") +
+  ylab("Percentage") + 
+  ggtitle("Percent Change in NBA GS by Ten Subgroups") + 
+  theme(
+    title = element_text(size = 12),
+    axis.text.x = element_text(size = 8)) +
+  scale_color_manual(
+    values = cols,
+    labels=c(
+      'Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms',
+      'Intl 1-681 Mins','Intl 682-1248 Mins','Intl 1249-3278 Mins','Intl 3279+ Mins',
+      'HS', 'Both experiences')) + geom_hline(aes(yintercept=0),size=1.5) +
+  geom_line(aes(color = factor(pre_nba_group)))
+```
+*(Figure 7)*
+
+Unsurprisingly, all ten groups show relative regression from December to January to February, with a couple still playing worse in March.  However, by April most every group rebounds and tends to play their best basketball.  This provides very resounding evidence that a "rookie wall" exists for nearly every type of rookie.
+
+## A Couple Special Decision-Making Comparisons
+
+Every year there are discussions about whether a player should declare for the draft or stay in college for another year.  Below are plots of the four groups of NCAA players based on their number of years of experience.
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+ggplot(df5, aes(x = factor(Month, levels = lvl2), y = mean_gs, group = pre_nba_group, color = 'pre_nba_group')) + 
+  geom_point(aes(color = factor(pre_nba_group), size = size)) +
+  xlab("Months") +
+  ylab("Game score") + 
+  ggtitle("Absolute NBA GS by NCAA Years Played") + 
+  theme(
+    title = element_text(size = 12),
+    axis.text.x = element_text(size = 8)) +
+  scale_color_manual(
+    values = c('1'='greenyellow','2'='orange','3'='dodgerblue','4'='firebrick3'),
+    labels=c('Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms')) +
+  geom_line(aes(color = factor(pre_nba_group)))
+```
+*(Figure 8)*
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+# regular season normalized percentage change for 4 NCAA groups with size
+ggplot(df5, aes(x = factor(Month, levels = lvl2), y = pct_change, group = pre_nba_group, color = 'pre_nba_group')) + 
+  geom_point(aes(color = factor(pre_nba_group), size = size)) +
+  xlab("Months") +
+  ylab("Percentage") + 
+  ggtitle("Percent Change in NBA GS by NCAA Years Played") + 
+  theme(
+    title = element_text(size = 12),
+    axis.text.x = element_text(size = 8)) +
+  scale_color_manual(
+    values = c('1'='greenyellow','2'='orange','3'='dodgerblue','4'='firebrick3'),
+    labels=c('Col 1-35 Gms','Col 36-70 Gms','Col 71-105 Gms','Col 106+ Gms')) + geom_hline(aes(yintercept=0),size=1.5) +
+  geom_line(aes(color = factor(pre_nba_group)))
+
+df6$pre_nba_group[df6$pre_nba_group == 1] = "Col 1-35 Gms"
+df6$pre_nba_group[df6$pre_nba_group == 9] = "High School"
+```
+*(Figure 9)*
+
+Unsurprisingly, players that leave college earlier are generally better than their counterparts who stay longer in college.  However, the rookie wall tends to hit very differently for each group.  Surprisingly, freshmen don't rend to regress until March, but when they do, it hits very drastically.  Conversely, seniors are the most consistent players in regards to improvement.  This could likely represent maturity, both within basketball, as well as external factors, like a 23-year old handling loneliness better than a 20-year old.  Despite this data, it's difficult to significantly determine whether staying an extra year in college aids in maturation and therefore effectiveness in the NBA.
+
+
+Another comparison is between high school players and freshmen college players, a common conversation for a 17 year-old in 2002.  When it was still legal, should players have gone straight to the NBA from high school, or should they spend one year in college to increase maturation and a mid-level competition?  Below it is a graph of undrafted players who choose to go overseas, versus those who stay in the United States and player lower-level American basketball like the Drew League or G League, addressing whether players should go overseas if they're not drafted, or if they should stay in NBA's lower levels.
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+undrafted=ggplot(df9, aes(x = factor(Month, levels = c(10, 11,12,1,2,3,4)), y = mean_pct_change, group = type, color = type)) + 
+  geom_point(aes(color = factor(type), size = size)) +
+  xlab("Months") +
+  ylab("Percentage") + 
+  ggtitle("Coll. vs Both Expr. Undrafted GS Pct Change") + 
+  theme(
+    title = element_text(size = 12),
+    axis.text.x = element_text(size = 8)) + geom_hline(aes(yintercept=0),size=1.5) +
+  geom_line(aes(color = factor(type)))
+
+hsfresh=ggplot(data = df6, mapping = aes(x = factor(Month, levels = lvl2), y = pct_change, group = pre_nba_group)) + 
+  geom_point(aes(color = factor(pre_nba_group), size = size)) +
+  xlab("Months") +
+  ylab("Percentage") +
+  ggtitle("HS vs Freshmen GS Pct Change") +
+  theme(
+    title = element_text(size = 12),
+    axis.text.x = element_text(size = 8)) + geom_hline(aes(yintercept=0),size=1.5) +
+  geom_line(aes(color = factor(pre_nba_group))) + 
+  scale_fill_discrete(name = 'Type')
+
+plot=ggarrange(undrafted, hsfresh, ncol=2,nrow=1,common.legend=FALSE)
+annotate_figure(plot,top=text_grob('Two Special Cases'))
+vp1=viewport(x=0,y=0,width=1,height=0.5,just=c('left','bottom'))
+vp2=viewport(x=0,y=0.5,width=1,height=0.5,just=c('left','bottom'))
+print(undrafted,vp=vp1)
+print(hsfresh,vp=vp2)
+```
+It's difficult to argue with the results of players like LeBron James and Kobe Bryant who skipped college, but high school players tend to be much more volatile than their counterparts who spent a year in the NCAA.  As for undrafted players, neither really hit a very drastic wall, but more volatility occurs with those who went overseas for the idea that they were likely not good enough to go straight the The League coming out of college.
+
+## Overarching Heat Map
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+library(plotly)
+df_rs <- df[df$MonthSegment < 21,]
+df_gs36n <- df_rs[12.0 >= df_rs$game_score_per_36 & df_rs$game_score_per_36 >= 3.085714,]
+plot_df <- summarise(group_by(df_gs36n, pre_nba_group, pre_nba_group_str, MonthStr, MonthSegment, MonthBin, round), 
+                     mean_gs=mean(game_score), mean_gs_per_36 = mean(game_score_per_36), size = n())
+
+plot_df <- plot_df %>%
+  mutate(bin_date = case_when(MonthBin == 1 ~ "1st-10th",
+                              MonthBin == 2 ~ "11th-20th",
+                              MonthBin == 3 ~ "21st-end of month"),
+         draft_round = case_when(round == 1 ~ "1st round",
+                                 round == 2 ~ "2nd round",
+                                 round == 3 ~ "Undrafted"))
+plot_df <- plot_df %>%
+  mutate(text = paste0("Time: ", MonthStr, "\t", bin_date, "\n", "Pre-NBA Group: ", pre_nba_group_str, "\n","Draft Pos: ", draft_round,"\n", "Size: ", size, "\n", "Avg. Game Score: ", round(mean_gs_per_36, 2)))
+
+ggplot(
+  plot_df, 
+  aes(MonthBin, round, fill = mean_gs_per_36, text=text)
+  ) +
+  geom_tile(colour = "white") +
+  scale_fill_gradient(low="green", high="red") + 
+  facet_grid(pre_nba_group~MonthStr) + scale_y_continuous(trans="reverse") + 
+  labs(x="10-day Period of Month",
+       y="Group of Rookies",
+       title = "Game Score Per 36 Minutes Heatmap (25th %ile - 75th %ile)", 
+       subtitle= "Performance change every 10 days", 
+       fill="GS per 36") + 
+  theme(
+  axis.title.x = element_text(color="black"),
+  axis.text.x = element_text(size = 3),
+  axis.text.y = element_text(size = 3),
+  axis.title.y = element_text(color="black"),
+  legend.title = element_text(color = "black", size = 7),
+  legend.text = element_text(color = "black", size = 5), 
+  legend.justification = c(1, 1), legend.position = c(1, 1)
+)
+#ggplotly(kp, tooltip = "text")
+```
+* Reason to choose 25-75th pctile: gs per 36 varies too much (-300 - 300+)
+* Interestingly, international players seem to have a relatively great February
+* Some red ones have small sample size, outlier
+* Although there are some color difference, it is not that significant
+
+
+## Conclusions
+* The "Rookie Wall" *really does seem to exist* around February!
+* Surprisingly, college players seem to be less volatile than international players
+* Seniors, who steadily improve throughout the year, are much more consistent than freshmen
+* Whether the wall "hits" in February or March, most everybody rebounds around April
+* Regardless, nothing is permanent enough to substantially affect draft decisions
+* Don't be afraid to be the San Antonio Spurs and draft the next Manu Ginobili!
+
+## References and Citations
+* 1 https://www.libertyballers.com/2019/1/13/18175969/finding-the-nba-rookie-wall
+* 2 https://www.foxsports.com/other/story/nba-rookie-wall-is-real-but-not-easily-defined-020713
+* 3 https://theathletic.com/761872/2019/01/11/its-real-and-its-spectacular-how-the-experts-identify-the-rookie-wall/
+* 4 https://www.basketball-reference.com/
+* 5 https://www.nbastuffer.com/analytics101/game-score/
+* 6 Game Score Formula=(Points)+0.4x(Field Goals Made)+0.7x(Offensive Rebounds)+0.3x(Defensive rebounds)+(Steals)+0.7x(Assists)+0.7x(Blocked Shots)- 0.7x(Field Goal Attempts)-0.4x(Free Throws Missed) - 0.4x(Personal Fouls)-(Turnovers)

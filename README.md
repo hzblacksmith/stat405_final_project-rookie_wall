@@ -1,5 +1,6 @@
 # STAT 405 Final Project: Rookie Wall
 ### Members: David Dai, Jason Gardner, Frank Li, Xinyang Zhu
+#### [Link](presentation/Rookie-Wall-Final-Presentation.pdf) to our paper
 
 This project analyzes to what extent a rookie “wall” exists in the National Basketball Association, and if it does, to whom it most affects. 
 
